@@ -1,0 +1,49 @@
+@page "/archive"
+@inject IContentManagementStore ContentStore
+
+<PageTitle>Archiwum · Signal Desk</PageTitle>
+
+<section class="page-heading compact">
+    <div>
+        <p class="eyebrow">MAGAZYN / 05</p>
+        <h1>Archiwum</h1>
+        <p class="lede">Wygasłe i ręcznie zamknięte wpisy pozostają dostępne do audytu.</p>
+    </div>
+</section>
+
+@if (_items is null)
+{
+    <p class="loading">Otwieram archiwum…</p>
+}
+else if (_items.Count == 0)
+{
+    <section class="empty-state">
+        <p class="eyebrow">BRAK REKORDÓW</p>
+        <h2>Archiwum jest jeszcze puste.</h2>
+    </section>
+}
+else
+{
+    <div class="archive-stack">
+        @foreach (var item in _items)
+        {
+            <article>
+                <span class="game-code">@(item.Game == GameKey.WutheringWaves ? "WUWA" : "NTE")</span>
+                <div><h2>@item.Title</h2><p>@item.Kind · @item.UpdatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p></div>
+                @if (item.SourceUrl is not null)
+                {
+                    <a href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">Źródło ↗</a>
+                }
+            </article>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<ContentListItem>? _items;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items = await ContentStore.ListAsync(ContentStatus.Archived, null, CancellationToken.None);
+    }
+}

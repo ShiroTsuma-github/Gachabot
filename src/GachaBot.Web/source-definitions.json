@@ -1,0 +1,142 @@
+{
+  "SourceDefinitions": [
+    {
+      "Key": "official-wuthering-waves",
+      "Game": "WutheringWaves",
+      "Trust": "Official",
+      "Handler": "json-article-feed",
+      "Url": "https://hw-media-cdn-mingchao.kurogame.com/akiwebsite/website2.0/json/G152/en/ArticleMenu.json",
+      "ArticleUrlTemplate": "https://wutheringwaves.kurogames.com/en/main/news/detail/{externalId}",
+      "JsonArticle": {
+        "DetailUrlTemplate": "https://hw-media-cdn-mingchao.kurogame.com/akiwebsite/website2.0/json/G152/en/article/{externalId}.json",
+        "ExternalIdField": "articleId",
+        "TitleField": "articleTitle",
+        "ContentField": "articleContent",
+        "PublishedAtField": "startTime",
+        "PublishedAtFormat": "yyyy-MM-dd HH:mm:ss",
+        "PublishedAtUtcOffsetHours": 8,
+        "CoverField": "suggestCover",
+        "StopWhenKnown": false
+      }
+    },
+    {
+      "Key": "official-neverness-to-everness",
+      "Game": "NevernessToEverness",
+      "Trust": "Official",
+      "Handler": "paged-html-article-feed",
+      "Url": "https://nte.perfectworld.com/en/article/news/index.html",
+      "HtmlArticle": {
+        "ItemSelector": ".listNews > a[href]",
+        "HrefAttribute": "href",
+        "ExternalIdPattern": "/(\\d+)\\.html$",
+        "TitleSelector": ".title",
+        "CategorySelector": ".type",
+        "PublishedAtSelector": ".date",
+        "PublishedAtFormat": "yyyy-MM-dd",
+        "DetailPublishedAtSelector": ".articleDate",
+        "DetailPublishedAtFormat": "yyyy.MM.dd",
+        "DetailContentSelector": ".articleContent",
+        "PaginationUrlTemplate": "https://nte.perfectworld.com/en/article/news/index{pageSuffix}.html",
+        "FirstPage": 0,
+        "MaximumPages": 100,
+        "StopWhenKnown": true,
+        "StopOnMissingPage": true,
+        "IgnoredImageHosts": ["docs.oa.wanmei.net"]
+      }
+    },
+    {
+      "Key": "wuwatracker-wuthering-waves-events",
+      "Game": "WutheringWaves",
+      "Trust": "Trusted",
+      "Handler": "wuthering-waves-timeline",
+      "Url": "https://wuwatracker.com/pl/timeline",
+      "Timeline": {
+        "ServerUtcOffsetHours": 8
+      }
+    },
+    {
+      "Key": "game8-neverness-to-everness-events",
+      "Game": "NevernessToEverness",
+      "Trust": "Trusted",
+      "Handler": "game8-event-calendar",
+      "Url": "https://game8.co/games/Neverness-to-Everness/archives/592073",
+      "EventCalendar": {
+        "ReadySelector": "h3",
+        "SectionHeadingSelector": "h3",
+        "IncludedSectionHeadings": ["List of Current Events", "List of Upcoming Events"],
+        "ExcludedSectionHeadings": ["Permanent", "Previous"],
+        "RowSelector": "tr",
+        "TitleSelector": "td:nth-child(1) a[href]",
+        "DurationSelector": "td:nth-child(2)",
+        "DetailsSelector": "td:nth-child(3)",
+        "RewardsSelector": "td:nth-child(4)",
+        "ImageSelector": "img",
+        "DateUtcOffsetHours": 1,
+        "DayStartHour": 5,
+        "NavigationTimeoutSeconds": 60,
+        "ReadyTimeoutSeconds": 45
+      }
+    },
+    {
+      "Key": "game8-wuthering-waves-redeem-codes",
+      "Game": "WutheringWaves",
+      "Trust": "ReviewRequired",
+      "Handler": "rendered-html-code-collection",
+      "Url": "https://game8.co/games/Wuthering-Waves/archives/453149",
+      "BrowserCollection": {
+        "ReadySelector": "input.a-clipboard__textInput",
+        "SectionHeadingSelector": "h2, h3",
+        "SectionHeadingContains": ["Codes"],
+        "SectionHeadingExcludes": ["Expired"],
+        "CurrentSectionHeadingContains": ["All Active"],
+        "PermanentSectionHeadingContains": ["List of All Active Redeem Codes"],
+        "ItemSelector": "input.a-clipboard__textInput",
+        "ValueAttribute": "value",
+        "RowSelector": "tr",
+        "ExpirySelector": "td:nth-child(2)",
+        "ExpiryPattern": "Expiry:\\s*(?<value>[A-Za-z]+ \\d{1,2}, \\d{4})",
+        "ExpiryMarker": "Expiry:",
+        "ExpiryDateFormats": ["MMMM d, yyyy"],
+        "UnknownExpiryValues": ["TBD"],
+        "MissingExpiryIsActive": true,
+        "MissingExpiryDisplay": "No expiry announced",
+        "RewardItemSelector": "td:nth-child(2) .align",
+        "CurrentAggregateExternalId": "aggregate:current",
+        "PermanentAggregateExternalId": "aggregate:permanent",
+        "PermanentTitle": "Permanent Redeem Codes",
+        "NavigationTimeoutSeconds": 60,
+        "ReadyTimeoutSeconds": 45
+      }
+    },
+    {
+      "Key": "game8-neverness-to-everness-redeem-codes",
+      "Game": "NevernessToEverness",
+      "Trust": "ReviewRequired",
+      "Handler": "rendered-html-code-collection",
+      "Url": "https://game8.co/games/Neverness-to-Everness/archives/593718",
+      "BrowserCollection": {
+        "ReadySelector": "input.a-clipboard__textInput",
+        "SectionHeadingSelector": "h2, h3",
+        "SectionHeadingContains": ["Redeem Codes"],
+        "SectionHeadingExcludes": ["Expired"],
+        "CurrentSectionHeadingContains": ["Version"],
+        "PermanentSectionHeadingContains": ["All Active Redeem Codes"],
+        "ItemSelector": "input.a-clipboard__textInput",
+        "ValueAttribute": "value",
+        "RowSelector": "tr",
+        "ExpirySelector": ".a-red",
+        "ExpiryPattern": "Expiry Date:\\s*(?<value>\\d{2}/\\d{2}/\\d{4}|TBD|TBA)",
+        "ExpiryMarker": "Expiry Date:",
+        "ExpiryDateFormats": ["MM/dd/yyyy"],
+        "UnknownExpiryValues": ["TBD"],
+        "PermanentExpiryValues": ["TBA"],
+        "RewardItemSelector": "td:nth-child(2) .align",
+        "CurrentAggregateExternalId": "aggregate:current",
+        "PermanentAggregateExternalId": "aggregate:permanent",
+        "PermanentTitle": "Permanent Redeem Codes",
+        "NavigationTimeoutSeconds": 60,
+        "ReadyTimeoutSeconds": 45
+      }
+    }
+  ]
+}

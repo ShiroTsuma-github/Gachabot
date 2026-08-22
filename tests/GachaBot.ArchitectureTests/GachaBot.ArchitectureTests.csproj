@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/GachaBot.Domain/GachaBot.Domain.csproj" />
+    <ProjectReference Include="../../src/GachaBot.Application/GachaBot.Application.csproj" />
+    <ProjectReference Include="../../src/GachaBot.Infrastructure/GachaBot.Infrastructure.csproj" />
+    <ProjectReference Include="../../src/GachaBot.Web/GachaBot.Web.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,16 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <PageTitle>Nie znaleziono · Signal Desk</PageTitle>
+            <section class="empty-state">
+                <p class="eyebrow">404 / poza radarem</p>
+                <h1>Nie znaleziono widoku.</h1>
+                <a class="button button-primary" href="/">Wróć do pulpitu</a>
+            </section>
+        </LayoutView>
+    </NotFound>
+</Router>

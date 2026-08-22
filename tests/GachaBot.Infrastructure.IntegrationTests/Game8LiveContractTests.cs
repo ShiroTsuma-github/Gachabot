@@ -1,0 +1,99 @@
+using GachaBot.Application.Ingestion;
+using GachaBot.Domain.Content;
+using GachaBot.Infrastructure.Configuration;
+using GachaBot.Infrastructure.Sources;
+using Microsoft.Extensions.Options;
+
+namespace GachaBot.Infrastructure.IntegrationTests;
+
+public sealed class Game8LiveContractTests
+{
+    [Fact(Explicit = true)]
+    public async Task NteProductionDefinition_AggregatesCurrentCodesWithDetails()
+    {
+        var catalogJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "source-definitions.json"));
+        var definition = SourceDefinitionCatalog.Parse(catalogJson).Single(source =>
+            source.Key == "game8-neverness-to-everness-redeem-codes");
+        Assert.Equal("input.a-clipboard__textInput", definition.BrowserCollection?.ReadySelector);
+        var profilePath = Path.Combine(
+            Path.GetTempPath(),
+            "gachabot-playwright-contract",
+            Guid.NewGuid().ToString("N"));
+        try
+        {
+            await using var pageClient = new PlaywrightRenderedPageClient(
+                Options.Create(new BrowserAutomationOptions { ProfilePath = profilePath }));
+            var source = new ConfiguredGameContentSource(
+                definition,
+                new SourceHandlerResolver([new RenderedHtmlCodeHandler(
+                    pageClient,
+                    new FixedTimeProvider(new DateTimeOffset(2026, 8, 13, 12, 0, 0, TimeSpan.Zero)))]));
+            var items = new List<SourceContentSnapshot>();
+
+            await foreach (var item in source.FetchAsync(TestContext.Current.CancellationToken))
+            {
+                items.Add(item);
+            }
+
+            var current = Assert.Single(items, item => item.ExternalId == "aggregate:current");
+            Assert.Equal("All Version 1.3 Redeem Codes", current.Title);
+            Assert.Empty(current.Document.Blocks.OfType<CodeBlock>());
+            Assert.True(current.ExpiresAtUtc.HasValue);
+            var permanent = Assert.Single(items, item => item.ExternalId == "aggregate:permanent");
+            Assert.Contains(permanent.Document.Blocks.OfType<CodeBlock>(), block => block.Code == "NTENENE");
+            Assert.Contains(items, item => item.ExternalId == "FOGDENGAME" && item.ExpiresAtUtc.HasValue);
+        }
+        finally
+        {
+            if (Directory.Exists(profilePath))
+            {
+                Directory.Delete(profilePath, recursive: true);
+            }
+        }
+    }
+
+    [Fact(Explicit = true)]
+    public async Task WutheringWavesProductionDefinition_ExtractsCurrentCodesWithDetails()
+    {
+        var catalogJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "source-definitions.json"));
+        var definition = SourceDefinitionCatalog.Parse(catalogJson).Single(source =>
+            source.Key == "game8-wuthering-waves-redeem-codes");
+        var profilePath = Path.Combine(
+            Path.GetTempPath(),
+            "gachabot-playwright-contract",
+            Guid.NewGuid().ToString("N"));
+        try
+        {
+            await using var pageClient = new PlaywrightRenderedPageClient(
+                Options.Create(new BrowserAutomationOptions { ProfilePath = profilePath }));
+            var source = new ConfiguredGameContentSource(
+                definition,
+                new SourceHandlerResolver([new RenderedHtmlCodeHandler(pageClient, TimeProvider.System)]));
+            var items = new List<SourceContentSnapshot>();
+
+            await foreach (var item in source.FetchAsync(TestContext.Current.CancellationToken))
+            {
+                items.Add(item);
+            }
+
+            var current = Assert.Single(items, item => item.ExternalId == "aggregate:current");
+            var permanent = Assert.Single(items, item => item.ExternalId == "aggregate:permanent");
+            Assert.NotEmpty(current.Document.Blocks.OfType<CodeBlock>());
+            Assert.Contains(current.Document.Blocks.OfType<KeyValueBlock>(), block =>
+                block.Items.Any(item => item.Key == "Rewards"));
+            Assert.Contains(permanent.Document.Blocks.OfType<CodeBlock>(), block => block.Code == "WUTHERINGGIFT");
+        }
+        finally
+        {
+            if (Directory.Exists(profilePath))
+            {
+                Directory.Delete(profilePath, recursive: true);
+            }
+        }
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+}

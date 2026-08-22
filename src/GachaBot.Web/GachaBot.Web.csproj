@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <UserSecretsId>3c939613-9609-4b77-b2cc-8a1273f8134e</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../GachaBot.Application/GachaBot.Application.csproj" />
+    <ProjectReference Include="../GachaBot.Infrastructure/GachaBot.Infrastructure.csproj" />
+    <PackageReference Include="AspNet.Security.OAuth.Discord" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="source-definitions.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

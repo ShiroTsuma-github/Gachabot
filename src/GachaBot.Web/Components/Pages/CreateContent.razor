@@ -1,0 +1,153 @@
+@page "/content/new"
+@inject IContentManagementStore ContentStore
+@inject NavigationManager Navigation
+
+<PageTitle>Nowy wpis · Signal Desk</PageTitle>
+
+<section class="page-heading compact">
+    <div>
+        <p class="eyebrow">KOMPOZYTOR / 03</p>
+        <h1>Nowy wpis</h1>
+        <p class="lede">Zbuduj komunikat z tekstu, odnośnika i grafiki. Model blokowy można rozszerzać bez zmiany publikatora.</p>
+    </div>
+</section>
+
+<EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="create-content" class="editor-grid">
+    <DataAnnotationsValidator />
+    <section class="editor-panel">
+        <div class="section-label">01 / METADANE</div>
+        <div class="field-row two">
+            <label>Gra
+                <InputSelect @bind-Value="_model.Game">
+                    <option value="@GameKey.WutheringWaves">Wuthering Waves</option>
+                    <option value="@GameKey.NevernessToEverness">Neverness to Everness</option>
+                </InputSelect>
+            </label>
+            <label>Typ
+                <InputSelect @bind-Value="_model.Kind">
+                    @foreach (var kind in Enum.GetValues<ContentKind>())
+                    {
+                        <option value="@kind">@kind</option>
+                    }
+                </InputSelect>
+            </label>
+        </div>
+        <label>Tytuł
+            <InputText @bind-Value="_model.Title" placeholder="Np. Version 3.6 Maintenance" />
+            <ValidationMessage For="() => _model.Title" />
+        </label>
+    </section>
+
+    <section class="editor-panel">
+        <div class="section-label">02 / BLOKI TREŚCI</div>
+        <label>Tekst
+            <InputTextArea @bind-Value="_model.Body" rows="8" placeholder="Najważniejsze informacje dla graczy…" />
+            <ValidationMessage For="() => _model.Body" />
+        </label>
+        <label>Odnośnik <span class="optional">opcjonalnie</span>
+            <InputText @bind-Value="_model.LinkUrl" type="url" placeholder="https://…" />
+        </label>
+        <label>Grafika <span class="optional">opcjonalnie, URL HTTPS</span>
+            <InputText @bind-Value="_model.ImageUrl" type="url" placeholder="https://cdn…/banner.webp" />
+        </label>
+        <label>Opis alternatywny grafiki <span class="optional">wymagany dla grafiki</span>
+            <InputText @bind-Value="_model.ImageAlt" placeholder="Opis tego, co przedstawia grafika" />
+        </label>
+    </section>
+
+    <section class="editor-panel schedule-panel">
+        <div class="section-label">03 / PUBLIKACJA</div>
+        <label>Data i godzina <span class="optional">Europe/Warsaw; puste = szkic</span>
+            <InputDate @bind-Value="_model.PublishAtLocal" Type="InputDateType.DateTimeLocal" />
+        </label>
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <p class="form-error" role="alert">@_error</p>
+        }
+        <div class="form-actions">
+            <a class="button button-quiet" href="/content">Anuluj</a>
+            <button class="button button-primary" type="submit" disabled="@_saving">
+                @(_saving ? "Zapisuję…" : "Zapisz wpis")
+            </button>
+        </div>
+    </section>
+</EditForm>
+
+@code {
+    private readonly EditorModel _model = new();
+    private bool _saving;
+    private string? _error;
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        _error = null;
+        try
+        {
+            var blocks = new List<ContentBlock> { new TextBlock(_model.Body, 1) };
+            var position = 2;
+            if (!string.IsNullOrWhiteSpace(_model.LinkUrl))
+            {
+                blocks.Add(new LinkBlock("Więcej informacji", new Uri(_model.LinkUrl), position++));
+            }
+
+            if (!string.IsNullOrWhiteSpace(_model.ImageUrl))
+            {
+                blocks.Add(new ImageBlock(
+                    new Uri(_model.ImageUrl),
+                    string.IsNullOrWhiteSpace(_model.ImageAlt) ? _model.Title : _model.ImageAlt,
+                    position));
+            }
+
+            DateTimeOffset? publishAtUtc = null;
+            if (_model.PublishAtLocal.HasValue)
+            {
+                var local = DateTime.SpecifyKind(_model.PublishAtLocal.Value, DateTimeKind.Unspecified);
+                var zone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Warsaw");
+                publishAtUtc = new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, zone), TimeSpan.Zero);
+            }
+
+            await ContentStore.CreateManualAsync(
+                new CreateManualContentCommand(
+                    _model.Game,
+                    _model.Kind,
+                    _model.Title,
+                    ContentDocument.Create(blocks),
+                    publishAtUtc),
+                CancellationToken.None);
+            Navigation.NavigateTo("/content");
+        }
+        catch (Exception exception) when (exception is DomainValidationException or UriFormatException or ArgumentException)
+        {
+            _error = exception.Message;
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class EditorModel
+    {
+        public GameKey Game { get; set; } = GameKey.WutheringWaves;
+
+        public ContentKind Kind { get; set; } = ContentKind.Event;
+
+        [Required, StringLength(256)]
+        public string Title { get; set; } = string.Empty;
+
+        [Required, StringLength(4_000)]
+        public string Body { get; set; } = string.Empty;
+
+        [Url]
+        public string? LinkUrl { get; set; }
+
+        [Url]
+        public string? ImageUrl { get; set; }
+
+        [StringLength(512)]
+        public string? ImageAlt { get; set; }
+
+        public DateTime? PublishAtLocal { get; set; }
+    }
+}

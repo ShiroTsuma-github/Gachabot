@@ -1,0 +1,342 @@
+@page "/content/{Id:guid}"
+@inject IContentManagementStore ContentStore
+@inject IContentDeletionService ContentDeletionService
+@inject IGuildDestinationStore Destinations
+@inject IPublicationPreviewRenderer PreviewRenderer
+@inject NavigationManager Navigation
+
+<PageTitle>Podgląd treści · Signal Desk</PageTitle>
+
+@if (_details is null)
+{
+    <section class="empty-state">
+        <p class="eyebrow">BRAK WPISU</p>
+        <h1>Nie znaleziono treści.</h1>
+        <a href="/content">Wróć do indeksu →</a>
+    </section>
+}
+else
+{
+    <section class="page-heading compact">
+        <div>
+            <p class="eyebrow">PODGLĄD / @_details.SourceKey</p>
+            <h1>@_details.Title</h1>
+            <p class="lede">Ten sam dokument zasila podgląd i publikator Discord. Nie powstaje drugi format wiadomości.</p>
+        </div>
+        <div class="detail-actions">
+            @if (_details.AwaitingReview)
+            {
+                <button class="button button-primary" @onclick="ApproveAsync">Zatwierdź i publikuj</button>
+            }
+            @if (_details.Status != ContentStatus.Archived)
+            {
+                <button class="button button-quiet" @onclick="ArchiveAsync">Archiwizuj</button>
+                <button class="button button-quiet" @onclick="RepublishAsync">Opublikuj ponownie</button>
+            }
+            else
+            {
+                <button class="button button-quiet" @onclick="RestoreAsync">Odarchiwizuj</button>
+            }
+            <button class="button button-quiet" @onclick="DeleteAsync">Usuń trwale</button>
+        </div>
+    </section>
+
+    <section class="content-meta" aria-label="Metadane wpisu">
+        <div><span>Gra</span><strong>@GameLabel(_details.Game)</strong></div>
+        <div><span>Typ</span><strong>@_details.Kind</strong></div>
+        <div><span>Status</span><strong>@_details.Status</strong></div>
+        @if (_details.ArchiveReason is not null)
+        {
+            <div><span>Powód archiwizacji</span><strong>@ArchiveReasonLabel(_details.ArchiveReason.Value)</strong></div>
+        }
+        <div><span>Aktualizacja</span><strong>@FormatInstant(_details.UpdatedAtUtc)</strong></div>
+        @if (_details.SourcePublishedAtUtc is not null)
+        {
+            <div><span>Data źródła</span><strong>@_details.SourcePublishedAtUtc.Value.ToLocalTime().ToString("dd.MM.yyyy")</strong></div>
+        }
+        @if (_details.SourceUrl is not null)
+        {
+            <div class="meta-source"><span>Adres źródłowy</span><a href="@_details.SourceUrl" target="_blank" rel="noopener noreferrer">@_details.SourceUrl</a></div>
+        }
+    </section>
+
+    @if (_details.Status != ContentStatus.Archived)
+    {
+        <section class="targeted-publication" aria-labelledby="targeted-publication-heading">
+            <div>
+                <p class="eyebrow">PUBLIKACJA CELOWANA</p>
+                <h2 id="targeted-publication-heading">Wyślij tylko do jednej gildii</h2>
+                <p>Do wyboru są wyłącznie aktywne gildie obserwujące @GameLabel(_details.Game).</p>
+            </div>
+            @if (_eligibleDestinations.Count == 0)
+            {
+                <p class="targeted-publication-empty">Brak aktywnej gildii z subskrypcją tej gry.</p>
+            }
+            else
+            {
+                <div class="targeted-publication-controls">
+                    <label for="target-guild">Gildia docelowa</label>
+                    <select id="target-guild" @bind="_selectedGuildId">
+                        @foreach (var destination in _eligibleDestinations)
+                        {
+                            <option value="@destination.GuildId">@DisplayGuildName(destination) · #@DisplayChannelName(destination)</option>
+                        }
+                    </select>
+                    <button class="button button-primary" @onclick="RepublishToGuildAsync" disabled="@_targetedPublishInProgress">
+                        @(_targetedPublishInProgress ? "Dodaję do kolejki…" : "Wyślij do wybranej gildii")
+                    </button>
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(_targetedPublishMessage))
+            {
+                <p class="targeted-publication-message" aria-live="polite">@_targetedPublishMessage</p>
+            }
+        </section>
+    }
+
+    <div class="preview-grid">
+        <section class="extracted-panel">
+            <div class="section-label">Dane wyciągnięte ze źródła</div>
+            <p class="panel-note">Bloki po normalizacji i przed renderowaniem dla Discord.</p>
+            <div class="block-stack">
+                @foreach (var block in _details.Document.Blocks)
+                {
+                    <article class="extracted-block">
+                        <header><span>@block.Position.ToString("00")</span><code>@block.Kind</code></header>
+                        @switch (block)
+                        {
+                            case HeadingBlock heading:
+                                <h2>@heading.Text</h2>
+                                break;
+                            case TextBlock text:
+                                <p class="block-text">@text.Text</p>
+                                break;
+                            case LinkBlock link:
+                                <a href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Label · @link.Url</a>
+                                break;
+                            case ImageBlock image:
+                                <img src="@image.Url" alt="@image.AltText" loading="lazy" />
+                                <p class="media-caption">@image.AltText @image.Caption</p>
+                                break;
+                            case GalleryBlock gallery:
+                                <div class="extracted-gallery">
+                                    @foreach (var image in gallery.Images)
+                                    {
+                                        <figure><img src="@image.Url" alt="@image.AltText" loading="lazy" /><figcaption>@image.AltText @image.Caption</figcaption></figure>
+                                    }
+                                </div>
+                                break;
+                            case KeyValueBlock keyValue:
+                                <dl class="block-values">
+                                    @foreach (var item in keyValue.Items)
+                                    {
+                                        <div><dt>@item.Key</dt><dd>@item.Value</dd></div>
+                                    }
+                                </dl>
+                                break;
+                            case CodeBlock codeBlock:
+                                <pre><code>@codeBlock.Code</code></pre>
+                                break;
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="discord-panel">
+            <div class="section-label">Podgląd Discord</div>
+            <p class="panel-note">Symulacja pokazuje układ treści. Klient Discord może użyć innej czcionki lub szerokości.</p>
+            <p class="preview-subtitle">Symulacja wyglądu</p>
+            <div class="discord-channel">
+                @foreach (var message in _preview!.Messages)
+                {
+                    <article class="discord-message">
+                        <div class="discord-avatar" aria-hidden="true">GB</div>
+                        <div class="discord-content">
+                            <header><strong>GachaBot</strong><span>BOT</span><time>dzisiaj</time></header>
+                            @if (!string.IsNullOrWhiteSpace(message.Content))
+                            {
+                                @foreach (var autoEmbedLink in AutoEmbedLinks(message.Content))
+                                {
+                                    <a class="discord-message-copy" href="@autoEmbedLink" target="_blank" rel="noopener noreferrer">@autoEmbedLink</a>
+                                    <section class="discord-native-video" aria-label="Natywny podgląd YouTube">
+                                        <span>YOUTUBE · LINK EMBED</span>
+                                        <strong>Natywny podgląd YouTube</strong>
+                                        <small>Po publikacji Discord pobierze tytuł, miniaturę i odtwarzacz filmu.</small>
+                                    </section>
+                                }
+                            }
+                            @foreach (var embed in message.Embeds)
+                            {
+                                <section class="discord-rich-embed" style="@EmbedAccent(embed.Color)" aria-label="Rich embed Discord">
+                                    @if (embed.Title is not null)
+                                    {
+                                        if (embed.Url is not null)
+                                        {
+                                            <h2><a href="@embed.Url" target="_blank" rel="noopener noreferrer">@embed.Title</a></h2>
+                                        }
+                                        else
+                                        {
+                                            <h2>@embed.Title</h2>
+                                        }
+                                    }
+                                    @if (embed.Description is not null)
+                                    {
+                                        <p class="discord-embed-description">@embed.Description</p>
+                                    }
+                                    @if (embed.Fields.Count > 0)
+                                    {
+                                        <dl class="discord-embed-fields">
+                                            @foreach (var field in embed.Fields)
+                                            {
+                                                <div class="@(field.Inline ? "inline" : null)">
+                                                    <dt>@field.Name</dt>
+                                                    <dd>@field.Value</dd>
+                                                </div>
+                                            }
+                                        </dl>
+                                    }
+                                    @if (embed.Image is not null)
+                                    {
+                                        <img src="@embed.Image.Url" alt="@embed.Image.AltText" loading="lazy" />
+                                    }
+                                    @if (embed.Footer is not null)
+                                    {
+                                        <footer>@embed.Footer</footer>
+                                    }
+                                </section>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+            <details class="payload-details">
+                <summary>Dokładny payload · @_preview.Messages.Count wiadomości</summary>
+                @foreach (var message in _preview.Messages)
+                {
+                    <pre>@PayloadJson(message)</pre>
+                }
+            </details>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private GachaBot.Application.Content.ContentDetails? _details;
+    private PublicationPreview? _preview;
+    private IReadOnlyList<GuildDestination> _eligibleDestinations = [];
+    private ulong? _selectedGuildId;
+    private bool _targetedPublishInProgress;
+    private string? _targetedPublishMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _details = await ContentStore.GetAsync(Id, CancellationToken.None);
+        _preview = _details is null
+            ? null
+            : PreviewRenderer.Render(_details.Title, _details.Document, _details.SourceUrl);
+        _eligibleDestinations = _details is null
+            ? []
+            : (await Destinations.ListActiveAsync(CancellationToken.None))
+                .Where(destination => destination.Games.Contains(_details.Game))
+                .OrderBy(destination => destination.GuildName ?? destination.GuildId.ToString())
+                .ToArray();
+        _selectedGuildId = _eligibleDestinations.Any(destination => destination.GuildId == _selectedGuildId)
+            ? _selectedGuildId
+            : _eligibleDestinations.FirstOrDefault()?.GuildId;
+        _targetedPublishMessage = null;
+    }
+
+    private async Task ApproveAsync()
+    {
+        await ContentStore.ApproveAsync(Id, CancellationToken.None);
+        await OnParametersSetAsync();
+    }
+
+    private async Task ArchiveAsync()
+    {
+        await ContentStore.ArchiveAsync(Id, CancellationToken.None);
+        Navigation.NavigateTo("/archive");
+    }
+
+    private async Task RestoreAsync()
+    {
+        await ContentStore.RestoreAsync(Id, CancellationToken.None);
+        await OnParametersSetAsync();
+    }
+
+    private async Task RepublishAsync()
+    {
+        await ContentStore.RepublishAsync(Id, CancellationToken.None);
+        await OnParametersSetAsync();
+    }
+
+    private async Task RepublishToGuildAsync()
+    {
+        if (_selectedGuildId is null)
+        {
+            return;
+        }
+
+        _targetedPublishInProgress = true;
+        _targetedPublishMessage = null;
+        try
+        {
+            await ContentStore.RepublishToGuildAsync(Id, _selectedGuildId.Value, CancellationToken.None);
+            var destination = _eligibleDestinations.Single(item => item.GuildId == _selectedGuildId.Value);
+            _targetedPublishMessage = $"Dodano publikację dla {DisplayGuildName(destination)} do kolejki.";
+        }
+        catch (Exception exception)
+        {
+            _targetedPublishMessage = $"Nie udało się dodać publikacji: {exception.Message}";
+        }
+        finally
+        {
+            _targetedPublishInProgress = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        await ContentDeletionService.DeleteAsync(Id, CancellationToken.None);
+        Navigation.NavigateTo("/content");
+    }
+
+    private static string ArchiveReasonLabel(ArchiveReason reason) => reason switch
+    {
+        ArchiveReason.Manual => "Ręcznie",
+        ArchiveReason.Expired => "Wygasł",
+        ArchiveReason.Retention => "Okres retencji",
+        ArchiveReason.Superseded => "Zastąpiony nowszym wpisem",
+        _ => reason.ToString(),
+    };
+
+    private static string GameLabel(GameKey game) => game == GameKey.WutheringWaves
+        ? "Wuthering Waves"
+        : "Neverness to Everness";
+
+    private static string FormatInstant(DateTimeOffset value) =>
+        value.ToLocalTime().ToString("dd.MM.yyyy · HH:mm");
+
+    private static string DisplayGuildName(GuildDestination destination) =>
+        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Gildia {destination.GuildId}" : destination.GuildName;
+
+    private static string DisplayChannelName(GuildDestination destination) =>
+        string.IsNullOrWhiteSpace(destination.ChannelName) ? destination.ChannelId.ToString() : destination.ChannelName;
+
+    private static string EmbedAccent(int color) => $"--embed-accent: #{color:X6}";
+
+    private static IEnumerable<Uri> AutoEmbedLinks(string content) => content
+        .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(value => Uri.TryCreate(value, UriKind.Absolute, out var uri) ? uri : null)
+        .Where(uri => uri is not null)
+        .Cast<Uri>();
+
+    private static string PayloadJson(PublicationPreviewMessage message) =>
+        System.Text.Json.JsonSerializer.Serialize(
+            message,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+}

@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+.vscode/
+.env
+.env.*
+!.env.example
+data/
+backups/
+artifacts/
+TestResults/
+coverage/
+*.user
+*.suo

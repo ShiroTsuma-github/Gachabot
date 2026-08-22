@@ -1,0 +1,18 @@
+services:
+  gachabot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    ipc: host
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "8791:8791"
+    volumes:
+      - gachabot-data:/app/data
+
+volumes:
+  gachabot-data:

@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GachaBot.Domain/GachaBot.Domain.csproj" />
+    <Project Path="src/GachaBot.Application/GachaBot.Application.csproj" />
+    <Project Path="src/GachaBot.Infrastructure/GachaBot.Infrastructure.csproj" />
+    <Project Path="src/GachaBot.Web/GachaBot.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GachaBot.Domain.UnitTests/GachaBot.Domain.UnitTests.csproj" />
+    <Project Path="tests/GachaBot.Application.UnitTests/GachaBot.Application.UnitTests.csproj" />
+    <Project Path="tests/GachaBot.Infrastructure.IntegrationTests/GachaBot.Infrastructure.IntegrationTests.csproj" />
+    <Project Path="tests/GachaBot.ArchitectureTests/GachaBot.ArchitectureTests.csproj" />
+  </Folder>
+</Solution>

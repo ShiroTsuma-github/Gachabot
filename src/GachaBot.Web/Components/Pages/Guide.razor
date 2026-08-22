@@ -1,0 +1,63 @@
+@page "/guide"
+
+<PageTitle>Jak korzystać · Signal Desk</PageTitle>
+
+<section class="page-heading compact guide-heading">
+    <div>
+        <p class="eyebrow">INSTRUKCJA / 06</p>
+        <h1>Jak korzystać</h1>
+        <p class="lede">Od pierwszego uruchomienia źródła do publikacji wiadomości na Discord.</p>
+    </div>
+</section>
+
+<section class="guide-flow" aria-label="Proces pracy">
+    <article><span>01</span><h2>Odśwież źródło</h2><p>Otwórz <a href="/sources">Źródła</a>. Użyj przycisku przy konkretnej karcie albo odśwież wszystkie źródła.</p></article>
+    <article><span>02</span><h2>Sprawdź wynik</h2><p>Po skanie karta pokaże liczbę odczytanych, utworzonych i zmienionych pozycji. Link pod kartą otworzy treści z tego źródła.</p></article>
+    <article><span>03</span><h2>Otwórz podgląd</h2><p>Kliknij tytuł w indeksie. Lewa kolumna pokazuje wyciągnięte bloki, prawa dokładne rich embedy i payload przygotowany dla Discord.</p></article>
+    <article><span>04</span><h2>Zatwierdź lub zaplanuj</h2><p>Treści ze źródeł wymagających kontroli czekają na zatwierdzenie. Ręczny wpis możesz zapisać jako szkic albo ustawić datę publikacji.</p></article>
+</section>
+
+<section class="guide-reference">
+    <article>
+        <p class="eyebrow">FORMAT DISCORD</p>
+        <h2>Jeden dokument, jeden plan publikacji</h2>
+        <p>Tytuł embedu prowadzi do źródła. Tekst i zwykłe linki tworzą opis, dane key/value pola, a grafiki obraz główny i kolejne embedy. Link do filmu YouTube trafia do treści wiadomości, aby Discord utworzył własny odtwarzacz; wymaga to uprawnienia Embed Links. Podgląd i publikator korzystają z tego samego wyniku kompozytora.</p>
+    </article>
+    <article>
+        <p class="eyebrow">LIMITY API</p>
+        <h2>Podział odbywa się automatycznie</h2>
+        <p>Bot pilnuje 4096 znaków opisu, 25 pól na embed, 10 embedów oraz 6000 znaków embedów na wiadomość. Większy wpis trafia do kilku aktualizowalnych wiadomości Discord.</p>
+    </article>
+</section>
+
+<section class="guide-reference">
+    <article>
+        <p class="eyebrow">PIERWSZE URUCHOMIENIE</p>
+        <h2>Baseline nie publikuje starego katalogu</h2>
+        <p>Pierwszy poprawny odczyt zapisuje stan źródła. Kolejne odczyty porównują hash dokumentu z zapisem PostgreSQL. Bot tworzy rewizję i publikację dopiero po wykryciu nowej lub zmienionej treści zgodnie z polityką zaufania źródła.</p>
+    </article>
+    <article>
+        <p class="eyebrow">STATUSY</p>
+        <dl class="guide-definitions">
+            <div><dt>Szkic</dt><dd>Wpis bez terminu albo materiał oczekujący na kontrolę.</dd></div>
+            <div><dt>Zaplanowany</dt><dd>Wpis znajduje się w trwałej kolejce publikacji.</dd></div>
+            <div><dt>Opublikowany</dt><dd>Discord zwrócił identyfikator wiadomości.</dd></div>
+            <div><dt>Archiwum</dt><dd>Dashboard pokazuje powód: ręczny, wygasły albo zastąpiony. Ręcznie zarchiwizowanego wpisu refetch nie reaktywuje.</dd></div>
+        </dl>
+    </article>
+</section>
+
+<section class="guide-reference">
+    <article>
+        <p class="eyebrow">WPIS RĘCZNY</p>
+        <h2>Dodaj komunikat spoza automatycznych źródeł</h2>
+        <p>Otwórz <a href="/content/new">Nowy wpis</a>, wybierz grę i typ, dodaj tekst, linki oraz adresy grafik. Data i godzina używają strefy przeglądarki, a baza zapisuje termin w UTC.</p>
+        <p>Każde źródło ma osobny schemat w PostgreSQL, a wpisy ręczne trafiają do schematu <code>manual</code>. Pełny reset wykonuj świadomie na serwerze PostgreSQL; nie usuwaj plików z kontenera aplikacji.</p>
+    </article>
+    <article>
+        <p class="eyebrow">BŁĄD ŹRÓDŁA</p>
+        <h2>Sprawdź kartę źródła i logi</h2>
+        <p>Nieudany odczyt nie usuwa poprzednich danych. Karta zachowuje czas próby oraz skrócony komunikat błędu. Szczegóły znajdziesz w logach kontenera.</p>
+        <pre><code>docker compose logs --tail 200 gachabot</code></pre>
+    </article>
+</section>

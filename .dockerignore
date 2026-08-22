@@ -1,0 +1,14 @@
+.git
+.github
+.aura
+.env
+**/bin
+**/obj
+data
+backups
+artifacts
+TestResults
+coverage
+*.db
+*.db-shm
+*.db-wal

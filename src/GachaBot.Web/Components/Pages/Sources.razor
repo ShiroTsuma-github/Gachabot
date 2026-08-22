@@ -1,0 +1,141 @@
+@page "/sources"
+@inject ISourceOperations SourceOperations
+
+<PageTitle>Źródła · Signal Desk</PageTitle>
+
+<section class="page-heading compact">
+    <div>
+        <p class="eyebrow">TELEMETRIA / 04</p>
+        <h1>Źródła</h1>
+        <p class="lede">Stan baseline’u, polityka zaufania i ostatni poprawny odczyt.</p>
+    </div>
+    <button class="button button-primary" @onclick="RunAllNowAsync" disabled="@(_runningSource is not null)">
+        @(_runningSource == AllSourcesKey ? "Odświeżam…" : "Odśwież wszystkie")
+    </button>
+</section>
+
+@if (_lastRun is not null)
+{
+    <section class="run-summary" aria-live="polite">
+        @foreach (var result in _lastRun)
+        {
+            <span class="@(result.Succeeded ? "run-ok" : "run-failed")">
+                @result.Key — @(result.Succeeded ? ResultLabel(result.Result) : $"błąd / {result.FailureMessage}")
+            </span>
+        }
+    </section>
+}
+
+@if (_statuses is null)
+{
+    <p class="loading">Sprawdzam źródła…</p>
+}
+else
+{
+    <section class="source-grid">
+        @foreach (var source in _statuses)
+        {
+            <article class="source-card">
+                <div class="source-card-head">
+                    <span class="status-beacon @(source.HasCompletedBaseline ? "online" : "pending")"></span>
+                    <span class="trust-tag">@TrustLabel(source.Trust)</span>
+                </div>
+                <h2>@SourceLabel(source.Key)</h2>
+                <code>@source.Key</code>
+                <dl>
+                    <div><dt>Baseline</dt><dd>@(source.HasCompletedBaseline ? "gotowy" : "oczekuje")</dd></div>
+                    <div><dt>Ostatni odczyt</dt><dd>@FormatInstant(source.LastSuccessfulRunUtc)</dd></div>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(source.LastFailureMessage))
+                {
+                    <p class="source-error" title="@source.LastFailureMessage">Ostatnia próba: błąd · @FormatInstant(source.LastAttemptUtc)</p>
+                }
+                <div class="source-actions">
+                    <button class="button button-quiet"
+                            title="Odśwież to źródło"
+                            @onclick="() => RunSourceNowAsync(source.Key)"
+                            disabled="@(_runningSource is not null)">
+                        @(_runningSource == source.Key ? "Odświeżam…" : "Odśwież to źródło")
+                    </button>
+                    <a href="@ExtractedContentUrl(source.Key)">Zobacz wyciągnięte treści →</a>
+                </div>
+            </article>
+        }
+    </section>
+}
+
+@code {
+    private IReadOnlyList<SourceStatus>? _statuses;
+    private IReadOnlyList<SourceRunResult>? _lastRun;
+    private const string AllSourcesKey = "*";
+    private string? _runningSource;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task RunAllNowAsync()
+    {
+        _runningSource = AllSourcesKey;
+        try
+        {
+            _lastRun = await SourceOperations.RunAllAsync(CancellationToken.None);
+            await ReloadAsync();
+        }
+        finally
+        {
+            _runningSource = null;
+        }
+    }
+
+    private async Task RunSourceNowAsync(string sourceKey)
+    {
+        _runningSource = sourceKey;
+        try
+        {
+            _lastRun = [await SourceOperations.RunAsync(sourceKey, CancellationToken.None)];
+            await ReloadAsync();
+        }
+        finally
+        {
+            _runningSource = null;
+        }
+    }
+
+    private async Task ReloadAsync() =>
+        _statuses = await SourceOperations.GetStatusesAsync(CancellationToken.None);
+
+    private static string TrustLabel(SourceTrust trust) => trust switch
+    {
+        SourceTrust.Official => "OFFICIAL / AUTO",
+        SourceTrust.Trusted => "TRUSTED / AUTO",
+        SourceTrust.ReviewRequired => "REVIEW REQUIRED",
+        SourceTrust.Disabled => "DISABLED",
+        _ => trust.ToString(),
+    };
+
+    private static string SourceLabel(string key) => key switch
+    {
+        "official-wuthering-waves" => "Wuthering Waves · Official",
+        "official-neverness-to-everness" => "Neverness to Everness · Official",
+        "game8-wuthering-waves-redeem-codes" => "Wuthering Waves · Game8 Codes",
+        "game8-neverness-to-everness-redeem-codes" => "NTE · Game8 Codes",
+        "wuwatracker-wuthering-waves-events" => "Wuthering Waves · WuWa Tracker Events",
+        "game8-neverness-to-everness-events" => "NTE · Game8 Events",
+        _ => key,
+    };
+
+    private static string ExtractedContentUrl(string sourceKey)
+    {
+        var destination = sourceKey is "wuwatracker-wuthering-waves-events" or "game8-neverness-to-everness-events"
+            ? "/events"
+            : "/content";
+        return $"{destination}?source={Uri.EscapeDataString(sourceKey)}";
+    }
+
+    private static string FormatInstant(DateTimeOffset? value) => value.HasValue
+        ? value.Value.ToLocalTime().ToString("dd.MM.yyyy · HH:mm")
+        : "—";
+
+    private static string ResultLabel(IngestionResult? result) => result is null
+        ? "OK"
+        : $"OK / odczytane {result.Seen} · nowe {result.Created} · zmienione {result.Updated} · bez zmian {result.Unchanged}";
+}
