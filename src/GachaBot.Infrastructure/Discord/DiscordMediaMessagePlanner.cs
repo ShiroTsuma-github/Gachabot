@@ -119,7 +119,8 @@ public sealed class DiscordMediaMessagePlanner
     {
         if (image is null ||
             string.IsNullOrWhiteSpace(payload.ExternalId) ||
-            _publicationPolicy.UsesRemoteImages(payload.SourceKey))
+            (_publicationPolicy.UsesRemoteImages(payload.SourceKey) &&
+             payload.Kind != GachaBot.Domain.Content.ContentKind.Event))
         {
             return null;
         }

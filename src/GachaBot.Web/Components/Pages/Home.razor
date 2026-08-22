@@ -2,54 +2,60 @@
 @inject IContentManagementStore ContentStore
 @inject IOptions<SourcePollingOptions> PollingOptions
 
-<PageTitle>Pulpit · Signal Desk</PageTitle>
+<PageTitle>Dashboard · Signal Desk</PageTitle>
 
 <section class="page-heading">
     <div>
-        <p class="eyebrow">CENTRUM OPERACYJNE / 01</p>
-        <h1>Aktualizacje bez szumu.</h1>
-        <p class="lede">Oficjalne komunikaty, wydarzenia i kody trafiają do jednego kontrolowanego strumienia.</p>
+        <p class="eyebrow">OPERATIONS DESK / 01</p>
+        <h1>Schmidley.</h1>
     </div>
-    <a class="button button-primary" href="/content/new">+ Zaplanuj wpis</a>
+    <a class="button button-primary" href="/content/new">+ Schedule post</a>
 </section>
 
 @if (_metrics is null)
 {
-    <p class="loading">Odczytuję stan systemu…</p>
+    <p class="loading">Reading system state…</p>
 }
 else
 {
-    <section class="metric-grid" aria-label="Stan treści">
-        <a class="metric-card signal" href="/content?status=Active" aria-label="Zobacz aktywne komunikaty">
-            <span>Aktywne</span>
-            <strong>@_metrics.Active</strong>
-            <small>na radarze</small>
-        </a>
-        <a class="metric-card" href="/events" aria-label="Zobacz zaplanowane wydarzenia">
-            <span>Zaplanowane</span>
-            <strong>@_metrics.Scheduled</strong>
-            <small>w kolejce Discord · wydarzenia</small>
-        </a>
-        <a class="metric-card warning" href="/content?status=Draft" aria-label="Zobacz treści wymagające weryfikacji">
-            <span>Do weryfikacji</span>
-            <strong>@_metrics.AwaitingReview</strong>
-            <small>źródła społecznościowe</small>
-        </a>
-        <a class="metric-card" href="/archive" aria-label="Zobacz archiwum">
-            <span>Archiwum</span>
-            <strong>@_metrics.Archived</strong>
-            <small>zachowane wpisy</small>
-        </a>
-    </section>
+    <section class="home-dashboard-grid">
+        <aside class="home-schmidley-panel">
+            <img src="images/schmidley.png" alt="Schmidley" />
+        </aside>
+        <div class="home-dashboard-content">
+            <section class="metric-grid" aria-label="Content state">
+                <a class="metric-card signal" href="/content?status=Active" aria-label="View active posts">
+                    <span>Active</span>
+                    <strong>@_metrics.Active</strong>
+                    <small>on the radar</small>
+                </a>
+                <a class="metric-card" href="/events" aria-label="View scheduled events">
+                    <span>Scheduled</span>
+                    <strong>@_metrics.Scheduled</strong>
+                    <small>Discord queue · events</small>
+                </a>
+                <a class="metric-card warning" href="/content?status=Draft" aria-label="View posts awaiting review">
+                    <span>Review</span>
+                    <strong>@_metrics.AwaitingReview</strong>
+                    <small>community sources</small>
+                </a>
+                <a class="metric-card" href="/archive" aria-label="View archive">
+                    <span>Archive</span>
+                    <strong>@_metrics.Archived</strong>
+                    <small>retained posts</small>
+                </a>
+            </section>
 
-    <section class="status-board">
-        <div>
-            <p class="eyebrow">OSTATNI SYGNAŁ</p>
-            <h2>@FormatInstant(_metrics.LastSuccessfulImportUtc)</h2>
-        </div>
-        <div class="status-line">
-            <span class="live-dot" aria-hidden="true"></span>
-            <span>Polling co @PollingOptions.Value.IntervalMinutes minut · publikacja przez transactional outbox</span>
+            <section class="status-board">
+                <div>
+                    <p class="eyebrow">LAST SIGNAL</p>
+                    <h2>@FormatInstant(_metrics.LastSuccessfulImportUtc)</h2>
+                </div>
+                <div class="status-line">
+                    <span class="live-dot" aria-hidden="true"></span>
+                    <span>Polling every @PollingOptions.Value.IntervalMinutes min · transactional outbox delivery</span>
+                </div>
+            </section>
         </div>
     </section>
 }
@@ -63,6 +69,6 @@ else
     }
 
     private static string FormatInstant(DateTimeOffset? value) => value.HasValue
-        ? value.Value.ToLocalTime().ToString("dd.MM.yyyy · HH:mm", System.Globalization.CultureInfo.GetCultureInfo("pl-PL"))
-        : "Oczekuje na pierwszy import";
+        ? value.Value.ToLocalTime().ToString("dd MMM yyyy · HH:mm", System.Globalization.CultureInfo.GetCultureInfo("en-US"))
+        : "Awaiting first import";
 }

@@ -115,14 +115,14 @@ else
                                 <a href="@link.Url" target="_blank" rel="noopener noreferrer">@link.Label · @link.Url</a>
                                 break;
                             case ImageBlock image:
-                                <img src="@image.Url" alt="@image.AltText" loading="lazy" />
+                                <img src="@ArchivedMediaUrl(image.Url)" alt="@image.AltText" loading="lazy" />
                                 <p class="media-caption">@image.AltText @image.Caption</p>
                                 break;
                             case GalleryBlock gallery:
                                 <div class="extracted-gallery">
                                     @foreach (var image in gallery.Images)
                                     {
-                                        <figure><img src="@image.Url" alt="@image.AltText" loading="lazy" /><figcaption>@image.AltText @image.Caption</figcaption></figure>
+                                        <figure><img src="@ArchivedMediaUrl(image.Url)" alt="@image.AltText" loading="lazy" /><figcaption>@image.AltText @image.Caption</figcaption></figure>
                                     }
                                 </div>
                                 break;
@@ -198,7 +198,7 @@ else
                                     }
                                     @if (embed.Image is not null)
                                     {
-                                        <img src="@embed.Image.Url" alt="@embed.Image.AltText" loading="lazy" />
+                                        <img src="@ArchivedMediaUrl(embed.Image.Url)" alt="@embed.Image.AltText" loading="lazy" />
                                     }
                                     @if (embed.Footer is not null)
                                     {
@@ -255,6 +255,10 @@ else
         await ContentStore.ApproveAsync(Id, CancellationToken.None);
         await OnParametersSetAsync();
     }
+
+    private string ArchivedMediaUrl(Uri sourceUrl) => _details is null
+        ? string.Empty
+        : $"/media/{Uri.EscapeDataString(_details.SourceKey)}/{_details.Id:D}?sourceUrl={Uri.EscapeDataString(sourceUrl.AbsoluteUri)}";
 
     private async Task ArchiveAsync()
     {

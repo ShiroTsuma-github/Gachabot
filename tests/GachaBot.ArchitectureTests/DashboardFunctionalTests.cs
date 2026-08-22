@@ -107,6 +107,8 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         Assert.Contains("Dokładny payload", html, StringComparison.Ordinal);
         Assert.Contains("Event heading", html, StringComparison.Ordinal);
         Assert.Contains("https://cdn.example.com/event.webp", html, StringComparison.Ordinal);
+        Assert.Contains($"/media/", html, StringComparison.Ordinal);
+        Assert.Contains(id.ToString("D"), html, StringComparison.Ordinal);
         Assert.Contains("Rich embed Discord", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("\"Title\": \"Preview event\"", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("\"Color\": 5793266", decodedHtml, StringComparison.Ordinal);
@@ -162,7 +164,11 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
                     ContentKind.Event,
                     "Combat Event",
                     new Uri("https://wutheringwaves.kurogames.com/en/main/news/detail/5310"),
-                    ContentDocument.Create([new TextBlock("Clear stages.", 1)]),
+                    ContentDocument.Create(
+                    [
+                        new TextBlock("Clear stages.", 1),
+                        new ImageBlock(new Uri("https://example.com/combat-event.webp"), "Combat event artwork", 2),
+                    ]),
                     DateTimeOffset.UtcNow.AddHours(-2),
                     DateTimeOffset.UtcNow.AddDays(4)),
                 PublicationDisposition.SuppressBaseline,
@@ -176,6 +182,11 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         Assert.Contains("Do ", html, StringComparison.Ordinal);
         Assert.Contains("Combat Event", html, StringComparison.Ordinal);
         Assert.Contains("KALENDARZ / 02", html, StringComparison.Ordinal);
+        Assert.Contains("calendar-event-rails", html, StringComparison.Ordinal);
+        Assert.Contains("calendar-event-title", html, StringComparison.Ordinal);
+        Assert.Contains("calendar-event-art", html, StringComparison.Ordinal);
+        Assert.Contains("palette-", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("calendar-grid", html, StringComparison.Ordinal);
     }
 
     [Fact]

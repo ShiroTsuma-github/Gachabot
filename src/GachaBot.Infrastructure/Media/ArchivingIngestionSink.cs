@@ -52,11 +52,6 @@ public sealed partial class ArchivingIngestionSink(
         ContentUpsertOutcome outcome,
         CancellationToken cancellationToken)
     {
-        if (outcome == ContentUpsertOutcome.Unchanged)
-        {
-            return;
-        }
-
         var mediaUrls = snapshot.Document.Blocks.SelectMany(block => block switch
         {
             ImageBlock image => [image.Url],
@@ -68,11 +63,24 @@ public sealed partial class ArchivingIngestionSink(
             snapshot.ExternalId,
             snapshot.Identity,
             snapshot.SourceUrl);
-        await mediaAssetRegistry.RemoveAbsentAsync(mediaRequest, mediaUrls, cancellationToken)
-            .ConfigureAwait(false);
+        if (outcome != ContentUpsertOutcome.Unchanged)
+        {
+            await mediaAssetRegistry.RemoveAbsentAsync(mediaRequest, mediaUrls, cancellationToken)
+                .ConfigureAwait(false);
+        }
         for (var index = 0; index < mediaUrls.Length; index++)
         {
             var mediaUrl = mediaUrls[index];
+            if (outcome == ContentUpsertOutcome.Unchanged &&
+                await mediaAssetRegistry.IsRecordedAsync(
+                    snapshot.SourceKey,
+                    snapshot.ExternalId,
+                    mediaUrl,
+                    cancellationToken).ConfigureAwait(false))
+            {
+                continue;
+            }
+
             try
             {
                 LogMediaArchiveStarted(

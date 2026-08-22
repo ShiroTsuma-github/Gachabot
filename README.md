@@ -45,7 +45,7 @@ Import-Certificate -FilePath .\caddy-local-root.crt -CertStoreLocation Cert:\Cur
 
 For a public deployment, replace `dockers.lan` in `Caddyfile` with a real DNS name pointing to the server, remove the `tls internal` line, and keep ports 80 and 443 reachable. Caddy will then obtain and renew the certificate automatically.
 
-Keep the named `gachabot-data` volume: it contains ASP.NET data-protection keys and the browser profile. Back it up together with PostgreSQL and the S3 bucket.
+Keep the named `gachabot-data` volume: it contains ASP.NET data-protection keys and the browser profile. Back it up together with PostgreSQL and the S3 bucket. Source artwork is copied to that S3 bucket; the dashboard serves the archived copy and Discord sends event artwork as an attachment instead of relying on the source CDN.
 
 ### Required configuration
 

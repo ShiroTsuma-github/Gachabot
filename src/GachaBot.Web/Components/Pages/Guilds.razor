@@ -1,62 +1,62 @@
 @page "/guilds"
 @inject IGuildDestinationStore Destinations
 
-<PageTitle>Gildie · Signal Desk</PageTitle>
+<PageTitle>Guilds · Signal Desk</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">DYSTRYBUCJA / 06</p>
-        <h1>Gildie</h1>
-        <p class="lede">Kanały, które aktualnie odbierają sygnały. Każda konfiguracja pozostaje niezależna.</p>
+        <p class="eyebrow">DELIVERY / 06</p>
+        <h1>Guilds</h1>
+        <p class="lede">Channels currently receiving signals. Each configuration remains independent.</p>
     </div>
 </section>
 
 @if (_destinations is null)
 {
-    <p class="loading">Odczytuję konfiguracje gildii…</p>
+    <p class="loading">Reading guild configurations…</p>
 }
 else if (_destinations.Count == 0)
 {
     <section class="empty-state">
-        <p class="eyebrow">BRAK KONFIGURACJI</p>
-        <h2>Bot nie został jeszcze skonfigurowany na żadnym serwerze.</h2>
-        <p>Administrator serwera może uruchomić <code>/gachabot-configure</code> i wybrać kanał publikacji.</p>
+        <p class="eyebrow">NO CONFIGURATION</p>
+        <h2>The bot has not been configured in any server yet.</h2>
+        <p>A server administrator can run <code>/gachabot-configure</code> and select a publication channel.</p>
     </section>
 }
 else
 {
-    <section class="guild-grid" aria-label="Skonfigurowane gildie">
+    <section class="guild-grid" aria-label="Configured guilds">
         @foreach (var destination in _destinations)
         {
             <article class="guild-card @(destination.IsEnabled ? "" : "paused")">
                 <header>
                     <div>
-                        <p class="eyebrow">GILDIA @destination.GuildId</p>
+                        <p class="eyebrow">GUILD @destination.GuildId</p>
                         <h2>@DisplayGuildName(destination)</h2>
                     </div>
-                    <span class="guild-state">@(destination.IsEnabled ? "AKTYWNA" : "WSTRZYMANA")</span>
+                    <span class="guild-state">@(destination.IsEnabled ? "ACTIVE" : "PAUSED")</span>
                 </header>
                 <dl>
                     <div>
-                        <dt>Kanał</dt>
+                        <dt>Channel</dt>
                         <dd><a href="@ChannelUrl(destination)" target="_blank" rel="noopener noreferrer">#@DisplayChannelName(destination) ↗</a></dd>
                     </div>
                     <div>
-                        <dt>Ostatnia zmiana</dt>
+                        <dt>Last change</dt>
                         <dd>@destination.UpdatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm")</dd>
                     </div>
                 </dl>
-                <div class="guild-topics" aria-label="Obserwowane gry">
+                <div class="guild-topics" aria-label="Followed games">
                     @foreach (var game in destination.Games.OrderBy(game => game))
                     {
                         <span>@GameLabel(game)</span>
                     }
                 </div>
                 <dl class="guild-event-timing">
-                    <div><dt>Start wydarzenia</dt><dd>@OffsetLabel(destination.EventStartOffsetHours)</dd></div>
-                    <div><dt>Przypomnienie o końcu</dt><dd>@OffsetLabel(destination.EventEndOffsetHours)</dd></div>
+                    <div><dt>Event start</dt><dd>@OffsetLabel(destination.EventStartOffsetHours)</dd></div>
+                    <div><dt>End reminder</dt><dd>@OffsetLabel(destination.EventEndOffsetHours)</dd></div>
                 </dl>
-                <a class="guild-history-link" href="@($"/guilds/{destination.GuildId}")">Zobacz kolejkę i historię →</a>
+                <a class="guild-history-link" href="@($"/guilds/{destination.GuildId}")">View queue and history →</a>
             </article>
         }
     </section>
@@ -69,7 +69,7 @@ else
         _destinations = await Destinations.ListAsync(CancellationToken.None);
 
     private static string DisplayGuildName(GuildDestination destination) =>
-        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Gildia {destination.GuildId}" : destination.GuildName;
+        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Guild {destination.GuildId}" : destination.GuildName;
 
     private static string DisplayChannelName(GuildDestination destination) =>
         string.IsNullOrWhiteSpace(destination.ChannelName) ? destination.ChannelId.ToString() : destination.ChannelName;
@@ -82,6 +82,6 @@ else
         : "Neverness to Everness";
 
     private static string OffsetLabel(double offsetHours) => offsetHours == 0
-        ? "w momencie"
-        : $"{offsetHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h wcześniej";
+        ? "at the event time"
+        : $"{offsetHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h earlier";
 }

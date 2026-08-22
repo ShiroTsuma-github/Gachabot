@@ -32,10 +32,36 @@ public sealed class MediaAssetRegistry(
         Uri sourceUrl,
         CancellationToken cancellationToken)
     {
+        if (!databaseFactory.DatabaseKeys.Contains(sourceKey, StringComparer.Ordinal))
+        {
+            return null;
+        }
+
         await using var context = databaseFactory.CreateDbContext(sourceKey);
         return await context.MediaAssets.AsNoTracking()
             .Where(asset => asset.Content.SourceKey == sourceKey &&
                 asset.Content.ExternalId == externalId &&
+                asset.SourceUrl == sourceUrl.AbsoluteUri &&
+                asset.ObjectKey != null)
+            .Select(asset => new StoredMediaAsset(
+                asset.ObjectKey!, asset.ContentType, asset.Sha256, asset.StoredLength))
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<StoredMediaAsset?> TryGetAsync(
+        string sourceKey,
+        Guid contentId,
+        Uri sourceUrl,
+        CancellationToken cancellationToken)
+    {
+        if (!databaseFactory.DatabaseKeys.Contains(sourceKey, StringComparer.Ordinal))
+        {
+            return null;
+        }
+
+        await using var context = databaseFactory.CreateDbContext(sourceKey);
+        return await context.MediaAssets.AsNoTracking()
+            .Where(asset => asset.ContentId == contentId &&
                 asset.SourceUrl == sourceUrl.AbsoluteUri &&
                 asset.ObjectKey != null)
             .Select(asset => new StoredMediaAsset(

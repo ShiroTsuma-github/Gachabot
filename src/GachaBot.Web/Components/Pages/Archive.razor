@@ -1,25 +1,25 @@
 @page "/archive"
 @inject IContentManagementStore ContentStore
 
-<PageTitle>Archiwum · Signal Desk</PageTitle>
+<PageTitle>Archive · Signal Desk</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">MAGAZYN / 05</p>
-        <h1>Archiwum</h1>
-        <p class="lede">Wygasłe i ręcznie zamknięte wpisy pozostają dostępne do audytu.</p>
+        <p class="eyebrow">VAULT / 05</p>
+        <h1>Archive</h1>
+        <p class="lede">Expired and manually closed posts remain available for audit.</p>
     </div>
 </section>
 
 @if (_items is null)
 {
-    <p class="loading">Otwieram archiwum…</p>
+    <p class="loading">Opening archive…</p>
 }
 else if (_items.Count == 0)
 {
     <section class="empty-state">
-        <p class="eyebrow">BRAK REKORDÓW</p>
-        <h2>Archiwum jest jeszcze puste.</h2>
+        <p class="eyebrow">NO RECORDS</p>
+        <h2>The archive is still empty.</h2>
     </section>
 }
 else
@@ -32,7 +32,7 @@ else
                 <div><h2>@item.Title</h2><p>@item.Kind · @item.UpdatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p></div>
                 @if (item.SourceUrl is not null)
                 {
-                    <a href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">Źródło ↗</a>
+                    <a href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">Source ↗</a>
                 }
             </article>
         }

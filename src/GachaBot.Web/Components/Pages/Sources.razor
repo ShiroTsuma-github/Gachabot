@@ -1,16 +1,16 @@
 @page "/sources"
 @inject ISourceOperations SourceOperations
 
-<PageTitle>Źródła · Signal Desk</PageTitle>
+<PageTitle>Sources · Signal Desk</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">TELEMETRIA / 04</p>
-        <h1>Źródła</h1>
-        <p class="lede">Stan baseline’u, polityka zaufania i ostatni poprawny odczyt.</p>
+        <p class="eyebrow">TELEMETRY / 04</p>
+        <h1>Sources</h1>
+        <p class="lede">Baseline state, trust policy, and the last successful import.</p>
     </div>
     <button class="button button-primary" @onclick="RunAllNowAsync" disabled="@(_runningSource is not null)">
-        @(_runningSource == AllSourcesKey ? "Odświeżam…" : "Odśwież wszystkie")
+        @(_runningSource == AllSourcesKey ? "Refreshing…" : "Refresh all")
     </button>
 </section>
 
@@ -20,7 +20,7 @@
         @foreach (var result in _lastRun)
         {
             <span class="@(result.Succeeded ? "run-ok" : "run-failed")">
-                @result.Key — @(result.Succeeded ? ResultLabel(result.Result) : $"błąd / {result.FailureMessage}")
+                @result.Key — @(result.Succeeded ? ResultLabel(result.Result) : $"error / {result.FailureMessage}")
             </span>
         }
     </section>
@@ -28,7 +28,7 @@
 
 @if (_statuses is null)
 {
-    <p class="loading">Sprawdzam źródła…</p>
+    <p class="loading">Checking sources…</p>
 }
 else
 {
@@ -43,21 +43,21 @@ else
                 <h2>@SourceLabel(source.Key)</h2>
                 <code>@source.Key</code>
                 <dl>
-                    <div><dt>Baseline</dt><dd>@(source.HasCompletedBaseline ? "gotowy" : "oczekuje")</dd></div>
-                    <div><dt>Ostatni odczyt</dt><dd>@FormatInstant(source.LastSuccessfulRunUtc)</dd></div>
+                    <div><dt>Baseline</dt><dd>@(source.HasCompletedBaseline ? "ready" : "pending")</dd></div>
+                    <div><dt>Last import</dt><dd>@FormatInstant(source.LastSuccessfulRunUtc)</dd></div>
                 </dl>
                 @if (!string.IsNullOrWhiteSpace(source.LastFailureMessage))
                 {
-                    <p class="source-error" title="@source.LastFailureMessage">Ostatnia próba: błąd · @FormatInstant(source.LastAttemptUtc)</p>
+                    <p class="source-error" title="@source.LastFailureMessage">Last attempt: error · @FormatInstant(source.LastAttemptUtc)</p>
                 }
                 <div class="source-actions">
                     <button class="button button-quiet"
-                            title="Odśwież to źródło"
+                            title="Refresh this source"
                             @onclick="() => RunSourceNowAsync(source.Key)"
                             disabled="@(_runningSource is not null)">
-                        @(_runningSource == source.Key ? "Odświeżam…" : "Odśwież to źródło")
+                        @(_runningSource == source.Key ? "Refreshing…" : "Refresh source")
                     </button>
-                    <a href="@ExtractedContentUrl(source.Key)">Zobacz wyciągnięte treści →</a>
+                    <a href="@ExtractedContentUrl(source.Key)">View extracted content →</a>
                 </div>
             </article>
         }
@@ -137,5 +137,5 @@ else
 
     private static string ResultLabel(IngestionResult? result) => result is null
         ? "OK"
-        : $"OK / odczytane {result.Seen} · nowe {result.Created} · zmienione {result.Updated} · bez zmian {result.Unchanged}";
+        : $"OK / seen {result.Seen} · new {result.Created} · changed {result.Updated} · unchanged {result.Unchanged}";
 }

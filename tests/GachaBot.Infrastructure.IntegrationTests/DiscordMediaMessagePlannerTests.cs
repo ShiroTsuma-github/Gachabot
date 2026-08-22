@@ -79,6 +79,25 @@ public sealed class DiscordMediaMessagePlannerTests : IDisposable
         Assert.Null(image?.AttachmentFileName);
     }
 
+    [Fact]
+    public async Task PrepareAsync_ForOfficialEvent_UsesArchivedAttachment()
+    {
+        var catalog = CreateCatalog();
+        var imageUrl = new Uri("https://cdn.example.com/official-event.png");
+        await AddArchivedAsync(catalog, imageUrl, "official-event");
+        var document = ContentDocument.Create([new ImageBlock(imageUrl, "Official event", 1)]);
+        var payload = Payload(document, ContentKind.Event);
+
+        var result = await CreatePlanner(catalog, official: true).PrepareAsync(
+            payload,
+            DiscordMessageComposer.Compose(payload.Title, document, payload.SourceUrl),
+            TestContext.Current.CancellationToken);
+
+        var message = Assert.Single(result);
+        Assert.Single(message.Attachments);
+        Assert.NotNull(Assert.Single(message.Embeds).Image?.AttachmentFileName);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_root))
@@ -129,12 +148,14 @@ public sealed class DiscordMediaMessagePlannerTests : IDisposable
                 ["official"] = official ? SourceTrust.Official : SourceTrust.ReviewRequired,
             }));
 
-    private static PublicationPayload Payload(ContentDocument document) => new(
+    private static PublicationPayload Payload(
+        ContentDocument document,
+        ContentKind kind = ContentKind.News) => new(
         Guid.NewGuid(),
         "official",
         "42",
         GameKey.WutheringWaves,
-        ContentKind.News,
+        kind,
         new GuildDestination(1, 1, 0, true, GuildDestinationGames.All, DateTimeOffset.MinValue),
         "Update",
         new Uri("https://example.com/source"),

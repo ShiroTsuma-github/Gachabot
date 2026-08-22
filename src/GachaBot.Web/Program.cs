@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AspNet.Security.OAuth.Discord;
 using GachaBot.Infrastructure;
 using GachaBot.Infrastructure.Database;
+using GachaBot.Infrastructure.Media;
 using GachaBot.Web;
 using GachaBot.Web.Components;
 using Microsoft.AspNetCore.Authentication;
@@ -157,6 +158,40 @@ app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
+var mediaEndpoint = app.MapGet("/media/{sourceKey}/{contentId:guid}", async (
+    HttpContext context,
+    string sourceKey,
+    Guid contentId,
+    string? sourceUrl,
+    MediaAssetRegistry mediaAssets,
+    IMediaObjectStore objectStore,
+    CancellationToken cancellationToken) =>
+{
+    if (!Uri.TryCreate(sourceUrl, UriKind.Absolute, out var url) ||
+        (url.Scheme != Uri.UriSchemeHttp && url.Scheme != Uri.UriSchemeHttps))
+    {
+        return Results.BadRequest();
+    }
+
+    var stored = await mediaAssets.TryGetAsync(sourceKey, contentId, url, cancellationToken);
+    if (stored is null)
+    {
+        return Results.NotFound();
+    }
+
+    var downloaded = await objectStore.TryDownloadAsync(stored.ObjectKey, cancellationToken);
+    if (downloaded is null)
+    {
+        return Results.NotFound();
+    }
+
+    context.Response.RegisterForDisposeAsync(downloaded);
+    return Results.File(downloaded.FullPath, stored.ContentType, enableRangeProcessing: false);
+});
+if (!developmentAccess)
+{
+    mediaEndpoint.RequireAuthorization("Administrator");
+}
 app.MapGet("/auth/login", (HttpContext context) =>
 {
     if (!oauthConfigured)

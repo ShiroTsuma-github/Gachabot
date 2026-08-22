@@ -2,28 +2,28 @@
 @inject IContentManagementStore ContentStore
 @inject NavigationManager Navigation
 
-<PageTitle>Nowy wpis · Signal Desk</PageTitle>
+<PageTitle>New post · Signal Desk</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">KOMPOZYTOR / 03</p>
-        <h1>Nowy wpis</h1>
-        <p class="lede">Zbuduj komunikat z tekstu, odnośnika i grafiki. Model blokowy można rozszerzać bez zmiany publikatora.</p>
+        <p class="eyebrow">COMPOSER / 03</p>
+        <h1>New post</h1>
+        <p class="lede">Build a message from text, a link, and artwork. The block model can grow without changing the publisher.</p>
     </div>
 </section>
 
 <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="create-content" class="editor-grid">
     <DataAnnotationsValidator />
     <section class="editor-panel">
-        <div class="section-label">01 / METADANE</div>
+        <div class="section-label">01 / METADATA</div>
         <div class="field-row two">
-            <label>Gra
+            <label>Game
                 <InputSelect @bind-Value="_model.Game">
                     <option value="@GameKey.WutheringWaves">Wuthering Waves</option>
                     <option value="@GameKey.NevernessToEverness">Neverness to Everness</option>
                 </InputSelect>
             </label>
-            <label>Typ
+            <label>Type
                 <InputSelect @bind-Value="_model.Kind">
                     @foreach (var kind in Enum.GetValues<ContentKind>())
                     {
@@ -32,32 +32,32 @@
                 </InputSelect>
             </label>
         </div>
-        <label>Tytuł
-            <InputText @bind-Value="_model.Title" placeholder="Np. Version 3.6 Maintenance" />
+        <label>Title
+            <InputText @bind-Value="_model.Title" placeholder="e.g. Version 3.6 Maintenance" />
             <ValidationMessage For="() => _model.Title" />
         </label>
     </section>
 
     <section class="editor-panel">
-        <div class="section-label">02 / BLOKI TREŚCI</div>
-        <label>Tekst
-            <InputTextArea @bind-Value="_model.Body" rows="8" placeholder="Najważniejsze informacje dla graczy…" />
+        <div class="section-label">02 / CONTENT BLOCKS</div>
+        <label>Text
+            <InputTextArea @bind-Value="_model.Body" rows="8" placeholder="The most important information for players…" />
             <ValidationMessage For="() => _model.Body" />
         </label>
-        <label>Odnośnik <span class="optional">opcjonalnie</span>
+        <label>Link <span class="optional">optional</span>
             <InputText @bind-Value="_model.LinkUrl" type="url" placeholder="https://…" />
         </label>
-        <label>Grafika <span class="optional">opcjonalnie, URL HTTPS</span>
+        <label>Artwork <span class="optional">optional, HTTPS URL</span>
             <InputText @bind-Value="_model.ImageUrl" type="url" placeholder="https://cdn…/banner.webp" />
         </label>
-        <label>Opis alternatywny grafiki <span class="optional">wymagany dla grafiki</span>
-            <InputText @bind-Value="_model.ImageAlt" placeholder="Opis tego, co przedstawia grafika" />
+        <label>Artwork alt text <span class="optional">required with artwork</span>
+            <InputText @bind-Value="_model.ImageAlt" placeholder="Describe the artwork" />
         </label>
     </section>
 
     <section class="editor-panel schedule-panel">
-        <div class="section-label">03 / PUBLIKACJA</div>
-        <label>Data i godzina <span class="optional">Europe/Warsaw; puste = szkic</span>
+        <div class="section-label">03 / PUBLICATION</div>
+        <label>Date and time <span class="optional">Europe/Warsaw; blank = draft</span>
             <InputDate @bind-Value="_model.PublishAtLocal" Type="InputDateType.DateTimeLocal" />
         </label>
         @if (!string.IsNullOrWhiteSpace(_error))
@@ -65,9 +65,9 @@
             <p class="form-error" role="alert">@_error</p>
         }
         <div class="form-actions">
-            <a class="button button-quiet" href="/content">Anuluj</a>
+            <a class="button button-quiet" href="/content">Cancel</a>
             <button class="button button-primary" type="submit" disabled="@_saving">
-                @(_saving ? "Zapisuję…" : "Zapisz wpis")
+                @(_saving ? "Saving…" : "Save post")
             </button>
         </div>
     </section>
@@ -88,7 +88,7 @@
             var position = 2;
             if (!string.IsNullOrWhiteSpace(_model.LinkUrl))
             {
-                blocks.Add(new LinkBlock("Więcej informacji", new Uri(_model.LinkUrl), position++));
+                blocks.Add(new LinkBlock("More information", new Uri(_model.LinkUrl), position++));
             }
 
             if (!string.IsNullOrWhiteSpace(_model.ImageUrl))

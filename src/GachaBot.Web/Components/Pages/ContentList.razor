@@ -1,36 +1,36 @@
 @page "/content"
 @inject IContentManagementStore ContentStore
 
-<PageTitle>Treści · Signal Desk</PageTitle>
+<PageTitle>Content · Signal Desk</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">STRUMIEŃ / 03</p>
-        <h1>Treści</h1>
-        <p class="lede">Ogłoszenia, aktualizacje i kody — bez wydarzeń, które mają własny kalendarz.</p>
+        <p class="eyebrow">FEED / 03</p>
+        <h1>Content</h1>
+        <p class="lede">Announcements, updates, and codes — events have their own timeline.</p>
     </div>
-    <a class="button button-primary" href="/content/new">+ Nowy wpis</a>
+    <a class="button button-primary" href="/content/new">+ New post</a>
 </section>
 
 @if (_items is null)
 {
-    <p class="loading">Ładuję indeks…</p>
+    <p class="loading">Loading index…</p>
 }
 else
 {
-    <form class="content-filters" method="get" aria-label="Filtry treści">
+    <form class="content-filters" method="get" aria-label="Content filters">
         <div>
-            <label for="content-game">Gra</label>
+            <label for="content-game">Game</label>
             <select id="content-game" name="game" value="@Game">
-                <option value="">Wszystkie gry</option>
+                <option value="">All games</option>
                 <option value="WutheringWaves">Wuthering Waves</option>
                 <option value="NevernessToEverness">Neverness to Everness</option>
             </select>
         </div>
         <div>
-            <label for="content-kind">Format</label>
+            <label for="content-kind">Type</label>
             <select id="content-kind" name="kind" value="@Kind">
-                <option value="">Wszystkie formaty</option>
+                <option value="">All types</option>
                 @foreach (var kind in Enum.GetValues<ContentKind>().Where(kind => kind != ContentKind.Event))
                 {
                     <option value="@kind">@kind</option>
@@ -38,9 +38,9 @@ else
             </select>
         </div>
         <div>
-            <label for="content-status">Kontekst publikacji</label>
+            <label for="content-status">Publication state</label>
             <select id="content-status" name="status" value="@Status">
-                <option value="">Każdy status</option>
+                <option value="">Any state</option>
                 @foreach (var status in Enum.GetValues<ContentStatus>())
                 {
                     <option value="@status">@StatusLabel(status)</option>
@@ -48,9 +48,9 @@ else
             </select>
         </div>
         <div>
-            <label for="content-source">Źródło</label>
+            <label for="content-source">Source</label>
             <select id="content-source" name="source" value="@Source">
-                <option value="">Wszystkie źródła</option>
+                <option value="">All sources</option>
                 @foreach (var sourceKey in SourceKeys)
                 {
                     <option value="@sourceKey">@sourceKey</option>
@@ -58,28 +58,28 @@ else
             </select>
         </div>
         <div class="content-search">
-            <label for="content-search">Szukaj</label>
-            <input id="content-search" name="search" value="@Search" placeholder="Tytuł lub źródło" />
+            <label for="content-search">Search</label>
+            <input id="content-search" name="search" value="@Search" placeholder="Title or source" />
         </div>
         <input type="hidden" name="sort" value="@EffectiveSort" />
         <input type="hidden" name="direction" value="@EffectiveDirection" />
         <div class="content-filter-actions">
-            <button class="button button-primary" type="submit">Filtruj</button>
+            <button class="button button-primary" type="submit">Filter</button>
             @if (HasFilters)
             {
-                <a class="button button-quiet" href="/content">Wyczyść</a>
+                <a class="button button-quiet" href="/content">Clear</a>
             }
         </div>
     </form>
 
-    <p class="filter-summary" aria-live="polite">@VisibleItems.Count wyników w indeksie komunikatów.</p>
+    <p class="filter-summary" aria-live="polite">@VisibleItems.Count results in the message index.</p>
 
     @if (VisibleItems.Count == 0)
     {
         <section class="empty-state">
-            <p class="eyebrow">BRAK DOPASOWAŃ</p>
-            <h2>Żaden komunikat nie pasuje do wybranych filtrów.</h2>
-            <a href="/content">Wyczyść filtry →</a>
+            <p class="eyebrow">NO MATCHES</p>
+            <h2>No messages match the selected filters.</h2>
+            <a href="/content">Clear filters →</a>
         </section>
     }
     else
@@ -88,12 +88,12 @@ else
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th aria-sort="@AriaSort("game")"><a class="sort-link" href="@SortUrl("game")">Gra / typ @SortMark("game")</a></th>
-                        <th aria-sort="@AriaSort("title")"><a class="sort-link" href="@SortUrl("title")">Tytuł @SortMark("title")</a></th>
+                        <th aria-sort="@AriaSort("game")"><a class="sort-link" href="@SortUrl("game")">Game / type @SortMark("game")</a></th>
+                        <th aria-sort="@AriaSort("title")"><a class="sort-link" href="@SortUrl("title")">Title @SortMark("title")</a></th>
                         <th aria-sort="@AriaSort("status")"><a class="sort-link" href="@SortUrl("status")">Status @SortMark("status")</a></th>
-                        <th aria-sort="@AriaSort("source-date")"><a class="sort-link" href="@SortUrl("source-date")">Data źródła @SortMark("source-date")</a></th>
-                        <th aria-sort="@AriaSort("updated")"><a class="sort-link" href="@SortUrl("updated")">Aktualizacja @SortMark("updated")</a></th>
-                        <th><span class="visually-hidden">Akcje</span></th>
+                        <th aria-sort="@AriaSort("source-date")"><a class="sort-link" href="@SortUrl("source-date")">Source date @SortMark("source-date")</a></th>
+                        <th aria-sort="@AriaSort("updated")"><a class="sort-link" href="@SortUrl("updated")">Updated @SortMark("updated")</a></th>
+                        <th><span class="visually-hidden">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -106,7 +106,7 @@ else
                                 <small class="source-key">@item.SourceKey</small>
                                 @if (item.SourceUrl is not null)
                                 {
-                                    <a class="source-link" href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">źródło ↗</a>
+                                    <a class="source-link" href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">source ↗</a>
                                 }
                             </td>
                             <td>
@@ -122,16 +122,16 @@ else
                                 <div class="row-actions">
                                     @if (item.AwaitingReview)
                                     {
-                                        <button class="text-button approve" @onclick="() => ApproveAsync(item.Id)">Zatwierdź i publikuj</button>
+                                        <button class="text-button approve" @onclick="() => ApproveAsync(item.Id)">Approve & publish</button>
                                     }
                                     @if (item.Status != ContentStatus.Archived)
                                     {
-                                        <button class="text-button danger" @onclick="() => ArchiveAsync(item.Id)">Archiwizuj</button>
-                                        <button class="text-button" @onclick="() => RepublishAsync(item.Id)">Publikuj ponownie</button>
+                                        <button class="text-button danger" @onclick="() => ArchiveAsync(item.Id)">Archive</button>
+                                        <button class="text-button" @onclick="() => RepublishAsync(item.Id)">Republish</button>
                                     }
                                     else
                                     {
-                                        <button class="text-button approve" @onclick="() => RestoreAsync(item.Id)">Odarchiwizuj</button>
+                                        <button class="text-button approve" @onclick="() => RestoreAsync(item.Id)">Restore</button>
                                     }
                                 </div>
                             </td>
@@ -290,20 +290,20 @@ else
 
     private static string StatusLabel(ContentStatus status) => status switch
     {
-        ContentStatus.Draft => "Szkic",
-        ContentStatus.Active => "Aktywny",
-        ContentStatus.Scheduled => "Zaplanowany",
-        ContentStatus.Published => "Opublikowany",
-        ContentStatus.Archived => "Archiwum",
+        ContentStatus.Draft => "Draft",
+        ContentStatus.Active => "Active",
+        ContentStatus.Scheduled => "Scheduled",
+        ContentStatus.Published => "Published",
+        ContentStatus.Archived => "Archived",
         _ => status.ToString(),
     };
 
     private static string ArchiveReasonLabel(ArchiveReason reason) => reason switch
     {
-        ArchiveReason.Manual => "Ręcznie",
-        ArchiveReason.Expired => "Wygasł",
-        ArchiveReason.Retention => "Okres retencji",
-        ArchiveReason.Superseded => "Zastąpiony",
+        ArchiveReason.Manual => "Manual",
+        ArchiveReason.Expired => "Expired",
+        ArchiveReason.Retention => "Retention policy",
+        ArchiveReason.Superseded => "Superseded",
         _ => reason.ToString(),
     };
 }

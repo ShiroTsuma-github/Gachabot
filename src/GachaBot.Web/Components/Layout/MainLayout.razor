@@ -1,6 +1,6 @@
 @inherits LayoutComponentBase
 
-<a class="skip-link" href="#main-content">Przejdź do treści</a>
+<a class="skip-link" href="#main-content">Skip to content</a>
 
 <div class="app-shell">
     <aside class="signal-rail">
@@ -12,20 +12,20 @@
             </div>
         </div>
 
-        <nav aria-label="Główna nawigacja">
-            <NavLink href="/" Match="NavLinkMatch.All"><span>01</span>Pulpit</NavLink>
-            <NavLink href="/events"><span>02</span>Wydarzenia</NavLink>
-            <NavLink href="/content"><span>03</span>Treści</NavLink>
-            <NavLink href="/content/new"><span>04</span>Nowy wpis</NavLink>
-            <NavLink href="/sources"><span>05</span>Źródła</NavLink>
-            <NavLink href="/archive"><span>06</span>Archiwum</NavLink>
-            <NavLink href="/guilds"><span>07</span>Gildie</NavLink>
-            <NavLink href="/guide"><span>08</span>Jak korzystać</NavLink>
+        <nav aria-label="Primary navigation">
+            <NavLink href="/" Match="NavLinkMatch.All"><span>01</span>Dashboard</NavLink>
+            <NavLink href="/events"><span>02</span>Events</NavLink>
+            <NavLink href="/content"><span>03</span>Content</NavLink>
+            <NavLink href="/content/new"><span>04</span>New post</NavLink>
+            <NavLink href="/sources"><span>05</span>Sources</NavLink>
+            <NavLink href="/archive"><span>06</span>Archive</NavLink>
+            <NavLink href="/guilds"><span>07</span>Guilds</NavLink>
+            <NavLink href="/guide"><span>08</span>Guide</NavLink>
         </nav>
 
         <div class="rail-footer">
             <span class="live-dot" aria-hidden="true"></span>
-            <span>Monitor aktywny</span>
+            <span>Monitor active</span>
         </div>
     </aside>
 
@@ -33,11 +33,11 @@
         <header class="topbar">
             <div>
                 <span class="eyebrow">WUTHERING WAVES / NTE</span>
-                <span class="topbar-note">Europe/Warsaw · zapis UTC</span>
+                <span class="topbar-note">Europe/Warsaw · UTC storage</span>
             </div>
             <form action="/auth/logout" method="post">
                 <AntiforgeryToken />
-                <button class="text-button" type="submit">Wyloguj</button>
+                <button class="text-button" type="submit">Sign out</button>
             </form>
         </header>
         <div id="main-content" class="page-frame" tabindex="-1">
@@ -47,7 +47,7 @@
 </div>
 
 <div id="blazor-error-ui" role="alert">
-    Wystąpił błąd interfejsu.
-    <a href="." class="reload">Odśwież</a>
-    <button class="dismiss" type="button" aria-label="Zamknij">×</button>
+    A UI error occurred.
+    <a href="." class="reload">Reload</a>
+    <button class="dismiss" type="button" aria-label="Dismiss">×</button>
 </div>

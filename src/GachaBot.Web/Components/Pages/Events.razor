@@ -1,93 +1,110 @@
 @page "/events"
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 @inject IContentManagementStore ContentStore
 @inject TimeProvider Clock
+@inject IJSRuntime JS
 
-<PageTitle>Wydarzenia · Signal Desk</PageTitle>
+<PageTitle>Events · Signal Desk</PageTitle>
 
 <section class="page-heading compact event-heading">
     <div>
-        <p class="eyebrow">KALENDARZ / 02</p>
-        <h1>Wydarzenia</h1>
-        <p class="lede">Bieżące i nadchodzące aktywności w grze. Godziny są pokazywane w strefie lokalnej.</p>
+        <p class="eyebrow">TIMELINE / 02</p>
+        <h1>Events</h1>
+        <p class="lede">Current and upcoming in-game activities. Times use your local timezone.</p>
     </div>
-    <a class="button button-quiet" href="/sources">Odśwież źródła</a>
+    <a class="button button-quiet" href="/sources">Refresh sources</a>
 </section>
 
 @if (_events is null)
 {
-    <p class="loading">Układam kalendarz…</p>
+    <p class="loading">Building timeline…</p>
 }
 else
 {
-    <form class="event-filter" method="get" aria-label="Filtr wydarzeń">
-        <label for="event-game">Gra</label>
+    <form class="event-filter" method="get" aria-label="Event filters">
+        <label for="event-game">Game</label>
         <select id="event-game" name="game" value="@Game">
-            <option value="">Wszystkie gry</option>
+            <option value="">All games</option>
             <option value="WutheringWaves">Wuthering Waves</option>
             <option value="NevernessToEverness">Neverness to Everness</option>
         </select>
         <div>
-            <label for="event-source">Źródło</label>
+            <label for="event-source">Source</label>
             <select id="event-source" name="source" value="@Source">
-                <option value="">Wszystkie źródła</option>
+                <option value="">All sources</option>
                 @foreach (var sourceKey in SourceKeys)
                 {
                     <option value="@sourceKey">@SourceLabel(sourceKey)</option>
                 }
             </select>
         </div>
-        <button class="button button-primary" type="submit">Pokaż</button>
+        <button class="button button-primary" type="submit">Apply</button>
         @if (!string.IsNullOrWhiteSpace(Game) || !string.IsNullOrWhiteSpace(Source))
         {
-            <a class="button button-quiet" href="/events">Wyczyść</a>
+            <a class="button button-quiet" href="/events">Clear</a>
         }
     </form>
 
     @if (VisibleEvents.Count == 0)
     {
         <section class="empty-state">
-            <p class="eyebrow">KALENDARZ JEST PUSTY</p>
-            <h2>Nie ma jeszcze aktywnych lub nadchodzących wydarzeń.</h2>
-            <p>Uruchom import źródła, aby zasilić ten widok.</p>
+            <p class="eyebrow">TIMELINE IS EMPTY</p>
+            <h2>There are no current or upcoming events yet.</h2>
+            <p>Run a source import to populate this view.</p>
         </section>
     }
     else
     {
-        <section class="event-calendar" aria-label="Kalendarz wydarzeń do końca najdłuższego widocznego wydarzenia">
+        <section class="event-calendar" aria-label="Event timeline through the latest visible end date">
             <header>
                 <div>
                     <span class="section-label">@CalendarStart.ToString("MMMM yyyy")</span>
-                    <strong>Do @LatestEventEnd.ToString("dd.MM.yyyy")</strong>
+                    <strong>Through @LatestEventEnd.ToString("dd MMM yyyy")</strong>
                 </div>
-                <span class="calendar-legend"><i class="active"></i> trwa teraz <i class="upcoming"></i> nadchodzi</span>
+                <span class="calendar-legend"><i class="active"></i> active <i class="upcoming"></i> upcoming</span>
             </header>
-            <div class="calendar-weekdays" aria-hidden="true">
-                @foreach (var name in WeekdayNames)
-                {
-                    <span>@name</span>
-                }
-            </div>
-            <div class="calendar-grid">
-                @foreach (var day in CalendarDays)
-                {
-                    var entries = EventsForDay(day);
-                    <article class="calendar-day @(day == Today ? "today" : string.Empty)">
-                        <time datetime="@day.ToString("yyyy-MM-dd")">@day.Day</time>
-                        @foreach (var entry in entries)
+            <div class="calendar-timeline-scroll" @ref="_timelineViewport">
+                <div class="calendar-timeline" style="--calendar-days: @CalendarDays.Count">
+                    <div class="calendar-timeline-days">
+                        @foreach (var day in CalendarDays)
                         {
-                            <a class="calendar-event @EventState(entry)" href="/content/@entry.Id" title="@EventTooltip(entry)">
-                                <span>@GameCode(entry.Game)</span>@CalendarLabel(entry)
+                            <article class="calendar-day @(day == Today ? "today" : string.Empty)">
+                                <span>@WeekdayName(day)</span>
+                                <time datetime="@day.ToString("yyyy-MM-dd")">@day.Day</time>
+                            </article>
+                        }
+                    </div>
+                    <div class="calendar-event-rails">
+                        @foreach (var segment in TimelineSegments)
+                        {
+                            <a class="calendar-event @EventState(segment.Event) @CalendarPaletteClass(segment.Event) @(segment.StartsHere ? "starts-here" : "continues-from") @(segment.EndsHere ? "ends-here" : "continues-to")"
+                               href="/content/@segment.Event.Id"
+                               style="@CalendarSegmentStyle(segment)"
+                               title="@EventTooltip(segment.Event)"
+                               aria-label="@EventTooltip(segment.Event)">
+                                <span class="calendar-event-game">@GameCode(segment.Event.Game)</span>
+                                <span class="calendar-event-title">@segment.Event.Title</span>
+                                @if (segment.Event.ArtworkUrl is not null)
+                                {
+                                    <img class="calendar-event-art" src="@ArchivedMediaUrl(segment.Event.SourceKey, segment.Event.Id, segment.Event.ArtworkUrl)" alt="" aria-hidden="true" loading="lazy" />
+                                }
+                                @if (segment.EndsHere)
+                                {
+                                    <span class="calendar-event-end">to @(segment.Event.EndAtUtc.ToLocalTime().ToString("dd MMM"))</span>
+                                }
                             </a>
                         }
-                    </article>
-                }
+                    </div>
+                    <div class="calendar-today-marker" style="--today-column: @TodayColumn" aria-hidden="true"></div>
+                </div>
             </div>
         </section>
 
-        <section class="event-agenda" aria-label="Lista wydarzeń">
+        <section class="event-agenda" aria-label="Event list">
             <header>
                 <p class="eyebrow">AGENDA</p>
-                <h2>@VisibleEvents.Count wydarzeń</h2>
+                <h2>@VisibleEvents.Count events</h2>
             </header>
             <div>
                 @foreach (var entry in VisibleEvents)
@@ -114,6 +131,9 @@ else
     public string? Source { get; set; }
 
     private IReadOnlyList<CalendarEvent>? _events;
+    private ElementReference _timelineViewport;
+    private IJSObjectReference? _timelineModule;
+    private IJSObjectReference? _timelineWheel;
 
     private IReadOnlyList<string> SourceKeys => (_events ?? [])
         .Select(item => item.SourceKey)
@@ -131,11 +151,26 @@ else
 
     private DateOnly CalendarEnd => LatestEventEnd.AddDays(6 - (((int)LatestEventEnd.DayOfWeek + 6) % 7));
 
+    private int TodayColumn => Today.DayNumber - CalendarStart.DayNumber + 1;
+
     private IReadOnlyList<DateOnly> CalendarDays => Enumerable.Range(
             0,
             CalendarEnd.DayNumber - CalendarStart.DayNumber + 1)
         .Select(CalendarStart.AddDays)
         .ToArray();
+
+    private IReadOnlyList<CalendarEventSegment> TimelineSegments
+    {
+        get
+        {
+            var lanes = AllocateEventLanes(VisibleEvents);
+            return VisibleEvents
+                .Select(entry => BuildTimelineSegment(entry, lanes[entry.Id]))
+                .OrderBy(segment => segment.Lane)
+                .ThenBy(segment => segment.StartColumn)
+                .ToArray();
+        }
+    }
 
     private IReadOnlyList<CalendarEvent> VisibleEvents => (_events ?? [])
         .Where(item => string.IsNullOrWhiteSpace(Game) || string.Equals(item.Game.ToString(), Game, StringComparison.OrdinalIgnoreCase))
@@ -143,8 +178,6 @@ else
         .Where(item => item.EndAtUtc.ToLocalTime().Date >= CalendarStart.ToDateTime(TimeOnly.MinValue))
         .OrderBy(item => item.StartAtUtc)
         .ToArray();
-
-    private static IReadOnlyList<string> WeekdayNames { get; } = ["Pon", "Wto", "Śro", "Czw", "Pią", "Sob", "Nie"];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -167,29 +200,117 @@ else
                 item.Title,
                 item.Status,
                 details.SourcePublishedAtUtc.Value,
-                details.ExpiresAtUtc.Value));
+                details.ExpiresAtUtc.Value,
+                EventArtwork(details.Document)));
         }
 
         _events = calendarEvents;
     }
 
-    private IReadOnlyList<CalendarEvent> EventsForDay(DateOnly day) => VisibleEvents
-        .Where(entry =>
-            (DateOnly.FromDateTime(entry.StartAtUtc.ToLocalTime().DateTime) < CalendarStart
-                ? CalendarStart
-                : DateOnly.FromDateTime(entry.StartAtUtc.ToLocalTime().DateTime)) == day)
-        .ToArray();
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_events is not null && _timelineModule is null)
+        {
+            _timelineModule = await JS.InvokeAsync<IJSObjectReference>("import", "./calendar-timeline.js");
+            _timelineWheel = await _timelineModule.InvokeAsync<IJSObjectReference>("enableHorizontalWheel", _timelineViewport);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_timelineWheel is not null)
+        {
+            await _timelineWheel.InvokeVoidAsync("dispose");
+            await _timelineWheel.DisposeAsync();
+        }
+
+        if (_timelineModule is not null)
+        {
+            await _timelineModule.DisposeAsync();
+        }
+    }
+
+    private static IReadOnlyDictionary<Guid, int> AllocateEventLanes(IEnumerable<CalendarEvent> events)
+    {
+        var lanes = new List<DateOnly>();
+        var assignments = new Dictionary<Guid, int>();
+
+        foreach (var entry in events.OrderBy(item => item.StartAtUtc).ThenBy(item => item.EndAtUtc))
+        {
+            var start = LocalDate(entry.StartAtUtc);
+            var end = LocalDate(entry.EndAtUtc);
+            var lane = lanes.FindIndex(lastEnd => lastEnd < start);
+            if (lane < 0)
+            {
+                lane = lanes.Count;
+                lanes.Add(end);
+            }
+            else
+            {
+                lanes[lane] = end;
+            }
+
+            assignments[entry.Id] = lane;
+        }
+
+        return assignments;
+    }
+
+    private CalendarEventSegment BuildTimelineSegment(CalendarEvent entry, int lane)
+    {
+        var eventStart = LocalDate(entry.StartAtUtc);
+        var eventEnd = LocalDate(entry.EndAtUtc);
+        var segmentStart = eventStart < CalendarStart ? CalendarStart : eventStart;
+        var segmentEnd = eventEnd > CalendarEnd ? CalendarEnd : eventEnd;
+
+        return new CalendarEventSegment(
+            entry,
+            lane,
+            segmentStart.DayNumber - CalendarStart.DayNumber + 1,
+            segmentEnd.DayNumber - segmentStart.DayNumber + 1,
+            eventStart >= CalendarStart,
+            eventEnd <= CalendarEnd);
+    }
 
     private string EventState(CalendarEvent entry) =>
         entry.StartAtUtc <= Clock.GetUtcNow() && entry.EndAtUtc > Clock.GetUtcNow() ? "active" : "upcoming";
 
-    private string EventStateLabel(CalendarEvent entry) => EventState(entry) == "active" ? "Trwa" : "Nadchodzi";
+    private string EventStateLabel(CalendarEvent entry) => EventState(entry) == "active" ? "Active" : "Upcoming";
 
     private static string EventTooltip(CalendarEvent entry) =>
         $"{entry.Title}: {entry.StartAtUtc.ToLocalTime():dd.MM HH:mm} – {entry.EndAtUtc.ToLocalTime():dd.MM HH:mm}";
 
-    private static string CalendarLabel(CalendarEvent entry) =>
-        $"{entry.Title} · do {entry.EndAtUtc.ToLocalTime():dd.MM}";
+    private static DateOnly LocalDate(DateTimeOffset timestamp) =>
+        DateOnly.FromDateTime(timestamp.ToLocalTime().DateTime);
+
+    private static string CalendarSegmentStyle(CalendarEventSegment segment) =>
+        $"grid-column: {segment.StartColumn} / span {segment.ColumnSpan}; grid-row: {segment.Lane + 1};";
+
+    private static Uri? EventArtwork(ContentDocument document) => document.Blocks
+        .OfType<ImageBlock>()
+        .Select(block => block.Url)
+        .Concat(document.Blocks
+            .OfType<GalleryBlock>()
+            .SelectMany(block => block.Images)
+            .Select(image => image.Url))
+        .FirstOrDefault();
+
+    private static string CalendarPaletteClass(CalendarEvent entry) =>
+        $"palette-{entry.Id.ToByteArray()[0] % 5}";
+
+    private static string WeekdayName(DateOnly day) => day.DayOfWeek switch
+    {
+        DayOfWeek.Monday => "Pon",
+        DayOfWeek.Tuesday => "Wto",
+        DayOfWeek.Wednesday => "Śro",
+        DayOfWeek.Thursday => "Czw",
+        DayOfWeek.Friday => "Pią",
+        DayOfWeek.Saturday => "Sob",
+        _ => "Nie",
+    };
+
+    private static string ArchivedMediaUrl(string sourceKey, Guid contentId, Uri sourceUrl) =>
+        $"/media/{Uri.EscapeDataString(sourceKey)}/{contentId:D}?sourceUrl={Uri.EscapeDataString(sourceUrl.AbsoluteUri)}";
 
     private static string GameCode(GameKey game) => game == GameKey.WutheringWaves ? "WUWA" : "NTE";
 
@@ -207,5 +328,15 @@ else
         string Title,
         ContentStatus Status,
         DateTimeOffset StartAtUtc,
-        DateTimeOffset EndAtUtc);
+        DateTimeOffset EndAtUtc,
+        Uri? ArtworkUrl);
+
+    private sealed record CalendarEventSegment(
+        CalendarEvent Event,
+        int Lane,
+        int StartColumn,
+        int ColumnSpan,
+        bool StartsHere,
+        bool EndsHere);
+
 }
