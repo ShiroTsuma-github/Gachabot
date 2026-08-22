@@ -43,7 +43,7 @@ docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt .\caddy-local
 Import-Certificate -FilePath .\caddy-local-root.crt -CertStoreLocation Cert:\CurrentUser\Root
 ```
 
-For a public deployment, replace `dockers.lan` in `Caddyfile` with a real DNS name pointing to the server and keep ports 80 and 443 reachable. Caddy will obtain and renew the certificate automatically.
+For a public deployment, replace `dockers.lan` in `Caddyfile` with a real DNS name pointing to the server, remove the `tls internal` line, and keep ports 80 and 443 reachable. Caddy will then obtain and renew the certificate automatically.
 
 Keep the named `gachabot-data` volume: it contains ASP.NET data-protection keys and the browser profile. Back it up together with PostgreSQL and the S3 bucket.
 

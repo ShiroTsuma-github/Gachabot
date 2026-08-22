@@ -1,5 +1,5 @@
-# Change dockers.lan to a public DNS name for an Internet-facing deployment.
-# Caddy then obtains and renews a public TLS certificate automatically.
+# For an Internet-facing deployment, change dockers.lan to a public DNS name
+# and remove `tls internal`. Caddy will then obtain and renew a public certificate.
 dockers.lan {
     tls internal
     reverse_proxy gachabot:8791
