@@ -613,7 +613,7 @@ h2 { letter-spacing: -.03em; }
 .calendar-legend i:first-child { margin-left: 0; }
 .calendar-legend .active { background: var(--signal); box-shadow: 0 0 12px rgb(111 227 202 / 52%); }
 .calendar-legend .upcoming { background: var(--warning); }
-.calendar-timeline-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-color: #565665 transparent; }
+.calendar-timeline-scroll { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-color: #565665 transparent; touch-action: pan-x; }
 .calendar-timeline { --calendar-day-width: 38px; position: relative; width: max(100%, calc(var(--calendar-days) * var(--calendar-day-width))); }
 .calendar-timeline-days, .calendar-event-rails { display: grid; grid-template-columns: repeat(var(--calendar-days), var(--calendar-day-width)); }
 .calendar-weekdays { border-bottom: 1px solid var(--line); background: rgb(6 12 19 / 32%); }
