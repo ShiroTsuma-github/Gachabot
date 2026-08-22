@@ -5,11 +5,11 @@
 @inject TimeProvider Clock
 @inject IJSRuntime JS
 
-<PageTitle>Events · Signal Desk</PageTitle>
+<PageTitle>Events · Schmidley</PageTitle>
 
 <section class="page-heading compact event-heading">
     <div>
-        <p class="eyebrow">TIMELINE / 02</p>
+        <p class="eyebrow">TIMELINE</p>
         <h1>Events</h1>
         <p class="lede">Current and upcoming in-game activities. Times use your local timezone.</p>
     </div>
@@ -29,18 +29,8 @@ else
             <option value="WutheringWaves">Wuthering Waves</option>
             <option value="NevernessToEverness">Neverness to Everness</option>
         </select>
-        <div>
-            <label for="event-source">Source</label>
-            <select id="event-source" name="source" value="@Source">
-                <option value="">All sources</option>
-                @foreach (var sourceKey in SourceKeys)
-                {
-                    <option value="@sourceKey">@SourceLabel(sourceKey)</option>
-                }
-            </select>
-        </div>
         <button class="button button-primary" type="submit">Apply</button>
-        @if (!string.IsNullOrWhiteSpace(Game) || !string.IsNullOrWhiteSpace(Source))
+        @if (!string.IsNullOrWhiteSpace(Game))
         {
             <a class="button button-quiet" href="/events">Clear</a>
         }
@@ -59,8 +49,8 @@ else
         <section class="event-calendar" aria-label="Event timeline through the latest visible end date">
             <header>
                 <div>
-                    <span class="section-label">@CalendarStart.ToString("MMMM yyyy")</span>
-                    <strong>Through @LatestEventEnd.ToString("dd MMM yyyy")</strong>
+                    <span class="section-label">@CalendarStart.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-US"))</span>
+                    <strong>Through @LatestEventEnd.ToString("dd MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-US"))</strong>
                 </div>
                 <span class="calendar-legend"><i class="active"></i> active <i class="upcoming"></i> upcoming</span>
             </header>
@@ -78,7 +68,7 @@ else
                     <div class="calendar-event-rails">
                         @foreach (var segment in TimelineSegments)
                         {
-                            <a class="calendar-event @EventState(segment.Event) @CalendarPaletteClass(segment.Event) @(segment.StartsHere ? "starts-here" : "continues-from") @(segment.EndsHere ? "ends-here" : "continues-to")"
+                            <a class="calendar-event @EventState(segment.Event) palette-@segment.Palette @(segment.StartsHere ? "starts-here" : "continues-from") @(segment.EndsHere ? "ends-here" : "continues-to")"
                                href="/content/@segment.Event.Id"
                                style="@CalendarSegmentStyle(segment)"
                                title="@EventTooltip(segment.Event)"
@@ -91,7 +81,7 @@ else
                                 }
                                 @if (segment.EndsHere)
                                 {
-                                    <span class="calendar-event-end">to @(segment.Event.EndAtUtc.ToLocalTime().ToString("dd MMM"))</span>
+                                    <span class="calendar-event-end">to @(segment.Event.EndAtUtc.ToLocalTime().ToString("dd MMM", System.Globalization.CultureInfo.GetCultureInfo("en-US")))</span>
                                 }
                             </a>
                         }
@@ -127,19 +117,10 @@ else
     [SupplyParameterFromQuery(Name = "game")]
     public string? Game { get; set; }
 
-    [SupplyParameterFromQuery(Name = "source")]
-    public string? Source { get; set; }
-
     private IReadOnlyList<CalendarEvent>? _events;
     private ElementReference _timelineViewport;
     private IJSObjectReference? _timelineModule;
     private IJSObjectReference? _timelineWheel;
-
-    private IReadOnlyList<string> SourceKeys => (_events ?? [])
-        .Select(item => item.SourceKey)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .Order(StringComparer.OrdinalIgnoreCase)
-        .ToArray();
 
     private DateOnly Today => DateOnly.FromDateTime(Clock.GetLocalNow().DateTime);
 
@@ -163,9 +144,9 @@ else
     {
         get
         {
-            var lanes = AllocateEventLanes(VisibleEvents);
+            var placements = AllocateEventPlacements(VisibleEvents);
             return VisibleEvents
-                .Select(entry => BuildTimelineSegment(entry, lanes[entry.Id]))
+                .Select(entry => BuildTimelineSegment(entry, placements[entry.Id]))
                 .OrderBy(segment => segment.Lane)
                 .ThenBy(segment => segment.StartColumn)
                 .ToArray();
@@ -174,7 +155,6 @@ else
 
     private IReadOnlyList<CalendarEvent> VisibleEvents => (_events ?? [])
         .Where(item => string.IsNullOrWhiteSpace(Game) || string.Equals(item.Game.ToString(), Game, StringComparison.OrdinalIgnoreCase))
-        .Where(item => string.IsNullOrWhiteSpace(Source) || string.Equals(item.SourceKey, Source, StringComparison.OrdinalIgnoreCase))
         .Where(item => item.EndAtUtc.ToLocalTime().Date >= CalendarStart.ToDateTime(TimeOnly.MinValue))
         .OrderBy(item => item.StartAtUtc)
         .ToArray();
@@ -230,10 +210,11 @@ else
         }
     }
 
-    private static IReadOnlyDictionary<Guid, int> AllocateEventLanes(IEnumerable<CalendarEvent> events)
+    private static IReadOnlyDictionary<Guid, TimelinePlacement> AllocateEventPlacements(IEnumerable<CalendarEvent> events)
     {
         var lanes = new List<DateOnly>();
-        var assignments = new Dictionary<Guid, int>();
+        var assignments = new Dictionary<Guid, TimelinePlacement>();
+        var placedEvents = new List<(DateOnly End, int Palette)>();
 
         foreach (var entry in events.OrderBy(item => item.StartAtUtc).ThenBy(item => item.EndAtUtc))
         {
@@ -250,13 +231,24 @@ else
                 lanes[lane] = end;
             }
 
-            assignments[entry.Id] = lane;
+            var overlappingPalettes = placedEvents
+                .Where(placed => placed.End >= start)
+                .Select(placed => placed.Palette)
+                .ToHashSet();
+            var palette = Enumerable.Range(0, 5).FirstOrDefault(candidate => !overlappingPalettes.Contains(candidate));
+            if (overlappingPalettes.Count >= 5)
+            {
+                palette = entry.Id.ToByteArray()[0] % 5;
+            }
+
+            placedEvents.Add((end, palette));
+            assignments[entry.Id] = new TimelinePlacement(lane, palette);
         }
 
         return assignments;
     }
 
-    private CalendarEventSegment BuildTimelineSegment(CalendarEvent entry, int lane)
+    private CalendarEventSegment BuildTimelineSegment(CalendarEvent entry, TimelinePlacement placement)
     {
         var eventStart = LocalDate(entry.StartAtUtc);
         var eventEnd = LocalDate(entry.EndAtUtc);
@@ -265,7 +257,8 @@ else
 
         return new CalendarEventSegment(
             entry,
-            lane,
+            placement.Lane,
+            placement.Palette,
             segmentStart.DayNumber - CalendarStart.DayNumber + 1,
             segmentEnd.DayNumber - segmentStart.DayNumber + 1,
             eventStart >= CalendarStart,
@@ -295,9 +288,6 @@ else
             .Select(image => image.Url))
         .FirstOrDefault();
 
-    private static string CalendarPaletteClass(CalendarEvent entry) =>
-        $"palette-{entry.Id.ToByteArray()[0] % 5}";
-
     private static string WeekdayName(DateOnly day) => day.DayOfWeek switch
     {
         DayOfWeek.Monday => "Mon",
@@ -314,13 +304,6 @@ else
 
     private static string GameCode(GameKey game) => game == GameKey.WutheringWaves ? "WUWA" : "NTE";
 
-    private static string SourceLabel(string sourceKey) => sourceKey switch
-    {
-        "wuwatracker-wuthering-waves-events" => "WuWa Tracker",
-        "game8-neverness-to-everness-events" => "Game8 NTE Events",
-        _ => sourceKey,
-    };
-
     private sealed record CalendarEvent(
         Guid Id,
         string SourceKey,
@@ -334,9 +317,12 @@ else
     private sealed record CalendarEventSegment(
         CalendarEvent Event,
         int Lane,
+        int Palette,
         int StartColumn,
         int ColumnSpan,
         bool StartsHere,
         bool EndsHere);
+
+    private sealed record TimelinePlacement(int Lane, int Palette);
 
 }

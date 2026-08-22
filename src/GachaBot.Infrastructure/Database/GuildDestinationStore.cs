@@ -30,6 +30,8 @@ public sealed class GuildDestinationRecord
 
     public double EventEndOffsetHours { get; set; } = 48;
 
+    public DateTimeOffset? RemovedAtUtc { get; set; }
+
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
 
@@ -51,6 +53,7 @@ public sealed class GuildConfigurationDbContext(DbContextOptions<GuildConfigurat
                 .HasDefaultValue(GuildDestinationGameSelection.AllGamesMask);
             entity.Property(destination => destination.EventStartOffsetHours).HasDefaultValue(0d);
             entity.Property(destination => destination.EventEndOffsetHours).HasDefaultValue(48d);
+            entity.Property(destination => destination.RemovedAtUtc);
         });
     }
 }
@@ -100,6 +103,9 @@ public sealed class GuildDestinationStore(
             cancellationToken).ConfigureAwait(false);
         await context.Database.ExecuteSqlRawAsync(
             "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"EventEndOffsetHours\" double precision NOT NULL DEFAULT 48;",
+            cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"RemovedAtUtc\" timestamp with time zone NULL;",
             cancellationToken).ConfigureAwait(false);
     }
 
@@ -165,6 +171,7 @@ public sealed class GuildDestinationStore(
             destination.ConfiguredByUserId = checked((long)configuredByUserId);
             destination.IsEnabled = true;
             destination.EnabledGameMask = gameMask;
+            destination.RemovedAtUtc = null;
             destination.UpdatedAtUtc = now;
         }
 
@@ -202,6 +209,73 @@ public sealed class GuildDestinationStore(
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task MarkRemovedAsync(ulong guildId, CancellationToken cancellationToken)
+    {
+        ValidateSnowflake(guildId, nameof(guildId));
+        await using var context = databaseFactory.CreateDbContext();
+        var destination = await context.GuildDestinations.SingleOrDefaultAsync(
+            item => item.GuildId == checked((long)guildId), cancellationToken).ConfigureAwait(false);
+        if (destination is null)
+        {
+            return;
+        }
+
+        destination.IsEnabled = false;
+        destination.RemovedAtUtc ??= timeProvider.GetUtcNow();
+        destination.UpdatedAtUtc = timeProvider.GetUtcNow();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RestoreRemovedAsync(ulong guildId, CancellationToken cancellationToken)
+    {
+        ValidateSnowflake(guildId, nameof(guildId));
+        await using var context = databaseFactory.CreateDbContext();
+        var destination = await context.GuildDestinations.SingleOrDefaultAsync(
+            item => item.GuildId == checked((long)guildId), cancellationToken).ConfigureAwait(false);
+        if (destination is null || destination.RemovedAtUtc is null)
+        {
+            return;
+        }
+
+        destination.RemovedAtUtc = null;
+        destination.UpdatedAtUtc = timeProvider.GetUtcNow();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<GuildDestination>> ListRemovedBeforeAsync(
+        DateTimeOffset cutoffUtc,
+        CancellationToken cancellationToken)
+    {
+        await using var context = databaseFactory.CreateDbContext();
+        var destinations = await context.GuildDestinations.AsNoTracking()
+            .Where(destination => destination.RemovedAtUtc != null && destination.RemovedAtUtc <= cutoffUtc)
+            .OrderBy(destination => destination.RemovedAtUtc)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return destinations.Select(ToContract).ToArray();
+    }
+
+    public async Task<bool> DeleteRemovedAsync(
+        ulong guildId,
+        DateTimeOffset cutoffUtc,
+        CancellationToken cancellationToken)
+    {
+        ValidateSnowflake(guildId, nameof(guildId));
+        await using var context = databaseFactory.CreateDbContext();
+        var destination = await context.GuildDestinations.SingleOrDefaultAsync(
+            item => item.GuildId == checked((long)guildId) &&
+                    item.RemovedAtUtc != null &&
+                    item.RemovedAtUtc <= cutoffUtc,
+            cancellationToken).ConfigureAwait(false);
+        if (destination is null)
+        {
+            return false;
+        }
+
+        context.GuildDestinations.Remove(destination);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
     public async Task<bool> IsAdministratorAsync(ulong userId, CancellationToken cancellationToken)
     {
         ValidateSnowflake(userId, nameof(userId));
@@ -221,7 +295,8 @@ public sealed class GuildDestinationStore(
         destination.GuildName,
         destination.ChannelName,
         destination.EventStartOffsetHours,
-        destination.EventEndOffsetHours);
+        destination.EventEndOffsetHours,
+        destination.RemovedAtUtc);
 
     private static int ToMask(IReadOnlySet<GameKey> games)
     {
@@ -313,6 +388,23 @@ public sealed class LegacyGuildDestinationStore : IGuildDestinationStore
         double endOffsetHours,
         CancellationToken cancellationToken) =>
         throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
+
+    public Task MarkRemovedAsync(ulong guildId, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
+
+    public Task RestoreRemovedAsync(ulong guildId, CancellationToken cancellationToken) =>
+        throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
+
+    public Task<IReadOnlyList<GuildDestination>> ListRemovedBeforeAsync(
+        DateTimeOffset cutoffUtc,
+        CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<GuildDestination>>([]);
+
+    public Task<bool> DeleteRemovedAsync(
+        ulong guildId,
+        DateTimeOffset cutoffUtc,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(false);
 
     public Task<bool> IsAdministratorAsync(ulong userId, CancellationToken cancellationToken) => Task.FromResult(false);
 }

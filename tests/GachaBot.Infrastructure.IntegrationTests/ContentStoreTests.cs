@@ -427,6 +427,23 @@ public sealed class ContentStoreTests : IAsyncLifetime
             CancellationToken cancellationToken) =>
             Task.CompletedTask;
 
+        public Task MarkRemovedAsync(ulong guildId, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task RestoreRemovedAsync(ulong guildId, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task<IReadOnlyList<GuildDestination>> ListRemovedBeforeAsync(
+            DateTimeOffset cutoffUtc,
+            CancellationToken cancellationToken) =>
+            Task.FromResult<IReadOnlyList<GuildDestination>>([]);
+
+        public Task<bool> DeleteRemovedAsync(
+            ulong guildId,
+            DateTimeOffset cutoffUtc,
+            CancellationToken cancellationToken) =>
+            Task.FromResult(false);
+
         public Task<bool> IsAdministratorAsync(ulong userId, CancellationToken cancellationToken) =>
             Task.FromResult(destinations.Any(destination => destination.ConfiguredByUserId == userId));
     }

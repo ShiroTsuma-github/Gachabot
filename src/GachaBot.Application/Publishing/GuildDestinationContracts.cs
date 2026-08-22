@@ -12,7 +12,8 @@ public sealed record GuildDestination(
     string? GuildName = null,
     string? ChannelName = null,
     double EventStartOffsetHours = 0,
-    double EventEndOffsetHours = 48);
+    double EventEndOffsetHours = 48,
+    DateTimeOffset? RemovedAtUtc = null);
 
 public static class GuildDestinationGames
 {
@@ -46,6 +47,19 @@ public interface IGuildDestinationStore
         ulong guildId,
         double startOffsetHours,
         double endOffsetHours,
+        CancellationToken cancellationToken);
+
+    Task MarkRemovedAsync(ulong guildId, CancellationToken cancellationToken);
+
+    Task RestoreRemovedAsync(ulong guildId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<GuildDestination>> ListRemovedBeforeAsync(
+        DateTimeOffset cutoffUtc,
+        CancellationToken cancellationToken);
+
+    Task<bool> DeleteRemovedAsync(
+        ulong guildId,
+        DateTimeOffset cutoffUtc,
         CancellationToken cancellationToken);
 
     Task<bool> IsAdministratorAsync(ulong userId, CancellationToken cancellationToken);

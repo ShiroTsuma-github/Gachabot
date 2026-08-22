@@ -2,6 +2,7 @@ using Discord;
 using Discord.WebSocket;
 using GachaBot.Application.Publishing;
 using GachaBot.Domain.Games;
+using GachaBot.Infrastructure.Publishing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,6 +13,7 @@ namespace GachaBot.Infrastructure.Discord;
 public sealed partial class DiscordGuildSetupWorker(
     IOptions<DiscordOptions> options,
     IGuildDestinationStore destinations,
+    GuildRemovalService guildRemovalService,
     IServiceScopeFactory scopeFactory,
     ILogger<DiscordGuildSetupWorker> logger) : BackgroundService
 {
@@ -32,6 +34,8 @@ public sealed partial class DiscordGuildSetupWorker(
             GatewayIntents = GatewayIntents.Guilds,
         });
         client.Ready += () => InitializeDiscordProfileAsync(client);
+        client.LeftGuild += HandleLeftGuildAsync;
+        client.GuildAvailable += HandleGuildAvailableAsync;
         client.SlashCommandExecuted += HandleSlashCommandAsync;
         client.Log += message =>
         {
@@ -116,6 +120,33 @@ public sealed partial class DiscordGuildSetupWorker(
                 type: ActivityType.Playing)
             .ConfigureAwait(false);
         await RegisterCommandsAsync(client).ConfigureAwait(false);
+        await ReconcileGuildMembershipAsync(client).ConfigureAwait(false);
+    }
+
+    private async Task HandleLeftGuildAsync(SocketGuild guild)
+    {
+        await destinations.MarkRemovedAsync(guild.Id, CancellationToken.None).ConfigureAwait(false);
+        await guildRemovalService.CancelPendingAsync(guild.Id, CancellationToken.None).ConfigureAwait(false);
+        LogGuildRemoved(logger, guild.Id);
+    }
+
+    private async Task HandleGuildAvailableAsync(SocketGuild guild)
+    {
+        await destinations.RestoreRemovedAsync(guild.Id, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    private async Task ReconcileGuildMembershipAsync(DiscordSocketClient client)
+    {
+        var availableGuildIds = client.Guilds.Select(guild => guild.Id).ToHashSet();
+        var missingGuilds = (await destinations.ListAsync(CancellationToken.None).ConfigureAwait(false))
+            .Where(destination => !availableGuildIds.Contains(destination.GuildId))
+            .ToArray();
+        foreach (var guild in missingGuilds)
+        {
+            await destinations.MarkRemovedAsync(guild.GuildId, CancellationToken.None).ConfigureAwait(false);
+            await guildRemovalService.CancelPendingAsync(guild.GuildId, CancellationToken.None).ConfigureAwait(false);
+            LogGuildRemoved(logger, guild.GuildId);
+        }
     }
 
     private async Task HandleSlashCommandAsync(SocketSlashCommand command)
@@ -383,4 +414,7 @@ public sealed partial class DiscordGuildSetupWorker(
 
     [LoggerMessage(EventId = 2204, Level = LogLevel.Debug, Message = "Discord gateway: {Message}")]
     private static partial void LogDiscordGateway(ILogger logger, LogMessage message);
+
+    [LoggerMessage(EventId = 2205, Level = LogLevel.Information, Message = "GachaBot was removed from guild {GuildId}; publications were disabled and pending posts cancelled.")]
+    private static partial void LogGuildRemoved(ILogger logger, ulong guildId);
 }

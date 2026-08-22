@@ -2,11 +2,11 @@
 @inject IContentManagementStore ContentStore
 @inject NavigationManager Navigation
 
-<PageTitle>New post · Signal Desk</PageTitle>
+<PageTitle>New post · Schmidley</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">COMPOSER / 03</p>
+        <p class="eyebrow">MANUAL POST</p>
         <h1>New post</h1>
         <p class="lede">Build a message from text, a link, and artwork. The block model can grow without changing the publisher.</p>
     </div>
@@ -15,7 +15,7 @@
 <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="create-content" class="editor-grid">
     <DataAnnotationsValidator />
     <section class="editor-panel">
-        <div class="section-label">01 / METADATA</div>
+        <div class="section-label">DETAILS</div>
         <div class="field-row two">
             <label>Game
                 <InputSelect @bind-Value="_model.Game">
@@ -39,7 +39,7 @@
     </section>
 
     <section class="editor-panel">
-        <div class="section-label">02 / CONTENT BLOCKS</div>
+        <div class="section-label">CONTENT</div>
         <label>Text
             <InputTextArea @bind-Value="_model.Body" rows="8" placeholder="The most important information for players…" />
             <ValidationMessage For="() => _model.Body" />
@@ -56,7 +56,7 @@
     </section>
 
     <section class="editor-panel schedule-panel">
-        <div class="section-label">03 / PUBLICATION</div>
+        <div class="section-label">PUBLICATION</div>
         <label>Date and time <span class="optional">Europe/Warsaw; blank = draft</span>
             <InputDate @bind-Value="_model.PublishAtLocal" Type="InputDateType.DateTimeLocal" />
         </label>

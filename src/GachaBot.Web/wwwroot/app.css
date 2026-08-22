@@ -879,10 +879,32 @@ h1 { max-width: 17ch; font-size: clamp(35px, 3.3vw, 54px); font-weight: 760; let
 .lede { max-width: 700px; color: #a7a7b4; }
 .page-heading { margin-bottom: 31px; }
 .home-dashboard-grid { display: grid; grid-template-columns: minmax(220px, 285px) minmax(0, 1fr); gap: 16px; align-items: stretch; }
-.home-dashboard-content { display: grid; min-width: 0; }
+.home-dashboard-content { display: grid; grid-template-rows: minmax(0, 1fr) auto; align-content: stretch; min-width: 0; }
 .home-schmidley-panel { position: relative; overflow: hidden; min-height: 100%; border: 1px solid #3b3b49; border-radius: var(--radius); background: #101016; }
 .home-schmidley-panel::after { position: absolute; inset: 0; content: ""; background: linear-gradient(180deg, transparent 54%, rgb(9 9 15 / 58%)); pointer-events: none; }
 .home-schmidley-panel img { display: block; width: 100%; height: 100%; min-height: 430px; object-fit: cover; object-position: center 18%; }
+.home-dashboard-content .metric-grid { height: 100%; grid-auto-rows: 1fr; }
+.home-dashboard-content .metric-card { min-height: 0; justify-content: space-between; padding: 28px; }
+.home-dashboard-content .metric-card strong { margin-top: 0; font-size: clamp(58px, 4.5vw, 82px); line-height: .82; }
+.home-dashboard-content .metric-card small { margin-top: 0; }
+
+/* Keep controls compact and make diagnostic surfaces legible in the dark shell. */
+.topbar { justify-content: flex-end; }
+.event-filter { grid-template-columns: minmax(240px, 320px) auto auto; width: fit-content; max-width: none; }
+.source-card-head { justify-content: flex-end; margin-bottom: 22px; }
+.status-beacon { display: none; }
+.guide-reference pre, .extracted-block pre, .payload-details pre {
+    color: #e7edf5;
+    background: #090d14;
+    border: 1px solid #34384a;
+    border-radius: 7px;
+}
+.guide-reference :not(pre) > code, .payload-details code {
+    color: #f7d977;
+    background: #0b1018;
+    border: 1px solid #383d4c;
+    border-radius: 4px;
+}
 
 .button { min-height: 40px; border-radius: 6px; box-shadow: none; }
 .button-primary { color: #211a02; background: linear-gradient(135deg, #ffe487, #ffc531); border-color: #ffe996; }

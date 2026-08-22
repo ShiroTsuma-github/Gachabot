@@ -8,6 +8,7 @@ using GachaBot.Infrastructure.Content;
 using GachaBot.Infrastructure.Database;
 using GachaBot.Infrastructure.Discord;
 using GachaBot.Infrastructure.Media;
+using GachaBot.Infrastructure.Publishing;
 using GachaBot.Infrastructure.Sources;
 using GachaBot.Infrastructure.Workers;
 using Microsoft.EntityFrameworkCore;
@@ -84,6 +85,7 @@ public static class DependencyInjection
         services.AddSingleton<IGuildConfigurationDatabaseFactory>(new GuildConfigurationDatabaseFactory(
             databaseOptions.ConnectionString));
         services.AddSingleton<IGuildDestinationStore, GuildDestinationStore>();
+        services.AddSingleton<GuildRemovalService>();
         services.AddScoped<IGuildPublicationHistoryStore, GuildPublicationHistoryStore>();
         services.AddScoped<DatabaseInitializer>();
         services.AddScoped<CompositeContentStore>();
@@ -161,6 +163,7 @@ public static class DependencyInjection
             services.AddHostedService<SourcePollingWorker>();
             services.AddHostedService<ArchiveWorker>();
             services.AddHostedService<MediaGarbageCollectionWorker>();
+            services.AddHostedService<GuildRemovalCleanupWorker>();
         }
 
         if (workersEnabled && configuration.GetValue<bool>("Discord:Enabled"))

@@ -3,7 +3,7 @@
 @inject IGuildPublicationHistoryStore PublicationHistory
 @inject TimeProvider Clock
 
-<PageTitle>Guild history · Signal Desk</PageTitle>
+<PageTitle>Guild history · Schmidley</PageTitle>
 
 @if (_destination is null)
 {
@@ -52,7 +52,7 @@ else
                 <div><dt>Guild ID</dt><dd>@_destination.GuildId</dd></div>
                 <div><dt>Channel ID</dt><dd>@_destination.ChannelId</dd></div>
                 <div><dt>Configured by</dt><dd>@_destination.ConfiguredByUserId</dd></div>
-                <div><dt>Last changed</dt><dd>@_destination.UpdatedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</dd></div>
+                <div><dt>Last changed</dt><dd>@_destination.UpdatedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm", System.Globalization.CultureInfo.GetCultureInfo("en-US"))</dd></div>
             </dl>
         </article>
     </section>
@@ -88,7 +88,7 @@ else
                         <a class="scheduled-publication-title" href="@($"/content/{item.ContentId}")">@item.Title</a>
                         <div class="scheduled-publication-time">
                             <span>@DueLabel(item)</span>
-                            <time datetime="@item.DueAtUtc.ToString("O")">@item.DueAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time>
+                            <time datetime="@item.DueAtUtc.ToString("O")">@item.DueAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm", System.Globalization.CultureInfo.GetCultureInfo("en-US"))</time>
                         </div>
                     </article>
                 }
@@ -134,7 +134,7 @@ else
                                 </td>
                                 <td><span class="game-code">@GameCode(item.Game)</span><small>@KindLabel(item.Kind) · @PurposeLabel(item.Purpose)</small></td>
                                 <td><span class="status-chip publication-state-@item.State.ToLowerInvariant()">@StateLabel(item.State)</span></td>
-                                <td><time>@item.UpdatedAtUtc.ToLocalTime().ToString("dd MMM · HH:mm")</time></td>
+                                <td><time>@item.UpdatedAtUtc.ToLocalTime().ToString("dd MMM · HH:mm", System.Globalization.CultureInfo.GetCultureInfo("en-US"))</time></td>
                                 <td>@item.AttemptCount</td>
                             </tr>
                         }

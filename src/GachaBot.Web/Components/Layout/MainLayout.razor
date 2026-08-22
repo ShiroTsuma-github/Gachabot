@@ -5,22 +5,22 @@
 <div class="app-shell">
     <aside class="signal-rail">
         <div class="brand-lockup">
-            <span class="brand-mark" aria-hidden="true">GB</span>
+            <span class="brand-mark" aria-hidden="true">S</span>
             <div>
-                <strong>Signal Desk</strong>
-                <span>Gacha intelligence</span>
+                <strong>Schmidley</strong>
+                <span>Discord event relay</span>
             </div>
         </div>
 
         <nav aria-label="Primary navigation">
-            <NavLink href="/" Match="NavLinkMatch.All"><span>01</span>Dashboard</NavLink>
-            <NavLink href="/events"><span>02</span>Events</NavLink>
-            <NavLink href="/content"><span>03</span>Content</NavLink>
-            <NavLink href="/content/new"><span>04</span>New post</NavLink>
-            <NavLink href="/sources"><span>05</span>Sources</NavLink>
-            <NavLink href="/archive"><span>06</span>Archive</NavLink>
-            <NavLink href="/guilds"><span>07</span>Guilds</NavLink>
-            <NavLink href="/guide"><span>08</span>Guide</NavLink>
+            <NavLink href="/" Match="NavLinkMatch.All">Dashboard</NavLink>
+            <NavLink href="/events">Events</NavLink>
+            <NavLink href="/content" Match="NavLinkMatch.All">Content</NavLink>
+            <NavLink href="/content/new">New post</NavLink>
+            <NavLink href="/sources">Sources</NavLink>
+            <NavLink href="/archive">Archive</NavLink>
+            <NavLink href="/guilds">Guilds</NavLink>
+            <NavLink href="/guide">Guide</NavLink>
         </nav>
 
         <div class="rail-footer">
@@ -31,10 +31,6 @@
 
     <main>
         <header class="topbar">
-            <div>
-                <span class="eyebrow">WUTHERING WAVES / NTE</span>
-                <span class="topbar-note">Europe/Warsaw · UTC storage</span>
-            </div>
             <form action="/auth/logout" method="post">
                 <AntiforgeryToken />
                 <button class="text-button" type="submit">Sign out</button>

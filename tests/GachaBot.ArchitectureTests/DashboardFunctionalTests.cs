@@ -28,9 +28,9 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
     }
 
     [Theory]
-    [InlineData("/", "Updates without the noise.")]
+    [InlineData("/", "Schmidley.")]
     [InlineData("/events", "Events")]
-    [InlineData("/content/new", "New entry")]
+    [InlineData("/content/new", "New post")]
     [InlineData("/sources", "Sources")]
     [InlineData("/archive", "Archive")]
     [InlineData("/guilds", "Guilds")]
@@ -109,7 +109,7 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         Assert.Contains("https://cdn.example.com/event.webp", html, StringComparison.Ordinal);
         Assert.Contains($"/media/", html, StringComparison.Ordinal);
         Assert.Contains(id.ToString("D"), html, StringComparison.Ordinal);
-        Assert.Contains("Rich embed Discord", decodedHtml, StringComparison.Ordinal);
+        Assert.Contains("Discord rich embed", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("\"Title\": \"Preview event\"", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("\"Color\": 5793266", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("Native YouTube preview", decodedHtml, StringComparison.Ordinal);
@@ -144,7 +144,6 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         Assert.Contains("aria-sort=\"ascending\"", html, StringComparison.Ordinal);
         Assert.Contains("sort=title", html, StringComparison.Ordinal);
         Assert.Contains("content-game", html, StringComparison.Ordinal);
-        Assert.Contains("Publication context", html, StringComparison.Ordinal);
         Assert.True(
             html.IndexOf("Alpha update", StringComparison.Ordinal) <
             html.IndexOf("Zulu update", StringComparison.Ordinal));
@@ -179,9 +178,9 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
-        Assert.Contains("Until ", html, StringComparison.Ordinal);
+        Assert.Contains("Through ", html, StringComparison.Ordinal);
         Assert.Contains("Combat Event", html, StringComparison.Ordinal);
-        Assert.Contains("CALENDAR / 02", html, StringComparison.Ordinal);
+        Assert.Contains("TIMELINE", html, StringComparison.Ordinal);
         Assert.Contains("calendar-event-rails", html, StringComparison.Ordinal);
         Assert.Contains("calendar-event-title", html, StringComparison.Ordinal);
         Assert.Contains("calendar-event-art", html, StringComparison.Ordinal);
@@ -190,7 +189,7 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
     }
 
     [Fact]
-    public async Task Events_FiltersImportedEventsBySource()
+    public async Task Events_DoesNotOfferRedundantSourceFilter()
     {
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
@@ -218,14 +217,14 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         }
 
         using var response = await _client.GetAsync(
-            "/events?source=game8-neverness-to-everness-events",
+            "/events",
             TestContext.Current.CancellationToken);
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
         Assert.Contains("NTE Game8 event", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("WuWa tracker event", html, StringComparison.Ordinal);
-        Assert.Contains("event-source", html, StringComparison.Ordinal);
+        Assert.Contains("WuWa tracker event", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("event-source", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -297,7 +296,7 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
-        Assert.Contains("Data źródła", html, StringComparison.Ordinal);
+        Assert.Contains("Source date", html, StringComparison.Ordinal);
         Assert.Contains("sort=source-date", html, StringComparison.Ordinal);
         Assert.Contains("02.06.2026", html, StringComparison.Ordinal);
         Assert.True(
@@ -341,8 +340,8 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
-        Assert.Contains("Data źródła", html, StringComparison.Ordinal);
-        Assert.Contains("02.06.2026", html, StringComparison.Ordinal);
+        Assert.Contains("Source date", html, StringComparison.Ordinal);
+        Assert.Contains("02 Jun 2026", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -368,8 +367,8 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
             await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
 
         response.EnsureSuccessStatusCode();
-        Assert.Contains("Powód archiwizacji", html, StringComparison.Ordinal);
-        Assert.Contains("Ręcznie", html, StringComparison.Ordinal);
+        Assert.Contains("Archive reason", html, StringComparison.Ordinal);
+        Assert.Contains("Manual", html, StringComparison.Ordinal);
     }
 }
 

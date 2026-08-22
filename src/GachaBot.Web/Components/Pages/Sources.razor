@@ -1,11 +1,11 @@
 @page "/sources"
 @inject ISourceOperations SourceOperations
 
-<PageTitle>Sources · Signal Desk</PageTitle>
+<PageTitle>Sources · Schmidley</PageTitle>
 
 <section class="page-heading compact">
     <div>
-        <p class="eyebrow">TELEMETRY / 04</p>
+        <p class="eyebrow">INGESTION</p>
         <h1>Sources</h1>
         <p class="lede">Baseline state, trust policy, and the last successful import.</p>
     </div>
@@ -37,7 +37,7 @@ else
         {
             <article class="source-card">
                 <div class="source-card-head">
-                    <span class="status-beacon @(source.HasCompletedBaseline ? "online" : "pending")"></span>
+                    <span class="status-chip @(source.HasCompletedBaseline ? "status-active" : "status-scheduled")">@(source.HasCompletedBaseline ? "READY" : "PENDING")</span>
                     <span class="trust-tag">@TrustLabel(source.Trust)</span>
                 </div>
                 <h2>@SourceLabel(source.Key)</h2>

@@ -5,7 +5,7 @@
 @inject IPublicationPreviewRenderer PreviewRenderer
 @inject NavigationManager Navigation
 
-<PageTitle>Content preview · Signal Desk</PageTitle>
+<PageTitle>Content preview · Schmidley</PageTitle>
 
 @if (_details is null)
 {
@@ -52,7 +52,7 @@ else
         <div><span>Updated</span><strong>@FormatInstant(_details.UpdatedAtUtc)</strong></div>
         @if (_details.SourcePublishedAtUtc is not null)
         {
-            <div><span>Source date</span><strong>@_details.SourcePublishedAtUtc.Value.ToLocalTime().ToString("dd MMM yyyy")</strong></div>
+            <div><span>Source date</span><strong>@_details.SourcePublishedAtUtc.Value.ToLocalTime().ToString("dd MMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-US"))</strong></div>
         }
         @if (_details.SourceUrl is not null)
         {
@@ -151,7 +151,7 @@ else
                 @foreach (var message in _preview!.Messages)
                 {
                     <article class="discord-message">
-                        <div class="discord-avatar" aria-hidden="true">GB</div>
+                        <div class="discord-avatar" aria-hidden="true">S</div>
                         <div class="discord-content">
                             <header><strong>GachaBot</strong><span>BOT</span><time>today</time></header>
                             @if (!string.IsNullOrWhiteSpace(message.Content))
@@ -323,7 +323,7 @@ else
         : "Neverness to Everness";
 
     private static string FormatInstant(DateTimeOffset value) =>
-        value.ToLocalTime().ToString("dd MMM yyyy · HH:mm");
+        value.ToLocalTime().ToString("dd MMM yyyy · HH:mm", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 
     private static string DisplayGuildName(GuildDestination destination) =>
         string.IsNullOrWhiteSpace(destination.GuildName) ? $"Guild {destination.GuildId}" : destination.GuildName;
