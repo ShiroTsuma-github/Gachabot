@@ -174,7 +174,6 @@ public static class DependencyInjection
             services.AddScoped<IGuildObsoleteMessageCleanup, GuildObsoleteMessageCleanup>();
             services.AddHostedService<DiscordGuildSetupWorker>();
             services.AddHostedService<PublicationDispatcher>();
-            services.AddHostedService<ObsoleteDiscordMessageCleanupWorker>();
         }
 
         return services;

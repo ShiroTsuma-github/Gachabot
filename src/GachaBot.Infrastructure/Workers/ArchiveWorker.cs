@@ -1,4 +1,5 @@
 using GachaBot.Application.Content;
+using GachaBot.Application.Publishing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,6 +8,7 @@ namespace GachaBot.Infrastructure.Workers;
 
 public sealed partial class ArchiveWorker(
     IServiceScopeFactory scopeFactory,
+    IGuildDestinationStore destinations,
     TimeProvider timeProvider,
     ILogger<ArchiveWorker> logger) : BackgroundService
 {
@@ -39,7 +41,27 @@ public sealed partial class ArchiveWorker(
             .ConfigureAwait(false);
         if (count > 0)
         {
+            await CleanArchivedMessagesAsync(cancellationToken).ConfigureAwait(false);
             LogArchived(logger, count);
+        }
+    }
+
+    private async Task CleanArchivedMessagesAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var cleanup = scope.ServiceProvider.GetService<IGuildObsoleteMessageCleanup>();
+        if (cleanup is null)
+        {
+            return;
+        }
+
+        var guildIds = (await destinations.ListAsync(cancellationToken).ConfigureAwait(false))
+            .Where(destination => destination.DeleteObsoleteMessages)
+            .Select(destination => destination.GuildId)
+            .ToArray();
+        foreach (var guildId in guildIds)
+        {
+            await cleanup.CleanGuildAsync(guildId, cancellationToken).ConfigureAwait(false);
         }
     }
 
