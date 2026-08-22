@@ -250,10 +250,12 @@ public sealed partial class DiscordGuildSetupWorker(
             .SingleOrDefault(item => item.GuildId == command.GuildId!.Value);
         var response = destination is null
             ? $"This server is not configured. Use `/{ConfigureCommand}` and choose a text channel."
-            : $"GachaBot publishes **{FormatGames(destination.Games)}** in <#{destination.ChannelId}>. " +
-              $"Status: **{(destination.IsEnabled ? "enabled" : "paused")}**. " +
-              $"Event start: **{FormatOffset(destination.EventStartOffsetHours)} before**; " +
-              $"ending reminder: **{FormatOffset(destination.EventEndOffsetHours)} before**.";
+            : $"**GachaBot configuration**\n" +
+              $"**Channel:** <#{destination.ChannelId}>\n" +
+              $"**Games:** {FormatGames(destination.Games)}\n" +
+              $"**Status:** {(destination.IsEnabled ? "enabled" : "paused")}\n" +
+              $"**Event start post:** {FormatStartOffset(destination.EventStartOffsetHours)}\n" +
+              $"**Ending reminder:** {FormatEndOffset(destination.EventEndOffsetHours)}";
         await command.RespondAsync(response, ephemeral: true).ConfigureAwait(false);
     }
 
@@ -287,8 +289,10 @@ public sealed partial class DiscordGuildSetupWorker(
             .ConfigureAwait(false);
         await ReconcileEventPublicationsAsync(guildId).ConfigureAwait(false);
         await command.RespondAsync(
-            $"Saved event timing: start post **{FormatOffset(startOffsetHours)} before**; " +
-            $"ending reminder **{FormatOffset(endOffsetHours)} before**. Pending event posts were recalculated.",
+            $"**Event timing saved**\n" +
+            $"**Event start post:** {FormatStartOffset(startOffsetHours)}\n" +
+            $"**Ending reminder:** {FormatEndOffset(endOffsetHours)}\n" +
+            "Pending event posts were recalculated.",
             ephemeral: true).ConfigureAwait(false);
     }
 
@@ -348,9 +352,16 @@ public sealed partial class DiscordGuildSetupWorker(
         return !double.IsNaN(value) && !double.IsInfinity(value) && value is >= 0 and <= 72;
     }
 
-    private static string FormatOffset(double value) => value == 0
-        ? "at the event time"
-        : $"{value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h";
+    private static string FormatStartOffset(double value) => value == 0
+        ? "at event start"
+        : $"{FormatHours(value)} before event start";
+
+    private static string FormatEndOffset(double value) => value == 0
+        ? "at event end"
+        : $"{FormatHours(value)} before event end";
+
+    private static string FormatHours(double value) =>
+        $"{value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h";
 
     private static string FormatGames(IEnumerable<GameKey> games) => string.Join(
         " + ",
