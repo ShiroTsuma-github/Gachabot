@@ -29,11 +29,17 @@ else
         {
             <article>
                 <span class="game-code">@(item.Game == GameKey.WutheringWaves ? "WUWA" : "NTE")</span>
-                <div><h2>@item.Title</h2><p>@item.Kind · @item.UpdatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p></div>
-                @if (item.SourceUrl is not null)
-                {
-                    <a href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">Source ↗</a>
-                }
+                <div>
+                    <h2><a class="content-title-link" href="@($"/content/{item.Id}")">@item.Title</a></h2>
+                    <p>@item.Kind · @item.UpdatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+                </div>
+                <div class="archive-actions">
+                    <a href="@($"/content/{item.Id}")">View preview →</a>
+                    @if (item.SourceUrl is not null)
+                    {
+                        <a href="@item.SourceUrl" target="_blank" rel="noopener noreferrer">Source ↗</a>
+                    }
+                </div>
             </article>
         }
     </div>

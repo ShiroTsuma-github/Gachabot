@@ -14,31 +14,7 @@
 
 <EditForm Model="_model" OnValidSubmit="SaveAsync" FormName="create-content" class="editor-grid">
     <DataAnnotationsValidator />
-    <section class="editor-panel">
-        <div class="section-label">DETAILS</div>
-        <div class="field-row two">
-            <label>Game
-                <InputSelect @bind-Value="_model.Game">
-                    <option value="@GameKey.WutheringWaves">Wuthering Waves</option>
-                    <option value="@GameKey.NevernessToEverness">Neverness to Everness</option>
-                </InputSelect>
-            </label>
-            <label>Type
-                <InputSelect @bind-Value="_model.Kind">
-                    @foreach (var kind in Enum.GetValues<ContentKind>())
-                    {
-                        <option value="@kind">@kind</option>
-                    }
-                </InputSelect>
-            </label>
-        </div>
-        <label>Title
-            <InputText @bind-Value="_model.Title" placeholder="e.g. Version 3.6 Maintenance" />
-            <ValidationMessage For="() => _model.Title" />
-        </label>
-    </section>
-
-    <section class="editor-panel">
+    <section class="editor-panel editor-content-panel">
         <div class="section-label">CONTENT</div>
         <label>Text
             <InputTextArea @bind-Value="_model.Body" rows="8" placeholder="The most important information for players…" />
@@ -55,22 +31,48 @@
         </label>
     </section>
 
-    <section class="editor-panel schedule-panel">
-        <div class="section-label">PUBLICATION</div>
-        <label>Date and time <span class="optional">Europe/Warsaw; blank = draft</span>
-            <InputDate @bind-Value="_model.PublishAtLocal" Type="InputDateType.DateTimeLocal" />
-        </label>
-        @if (!string.IsNullOrWhiteSpace(_error))
-        {
-            <p class="form-error" role="alert">@_error</p>
-        }
-        <div class="form-actions">
-            <a class="button button-quiet" href="/content">Cancel</a>
-            <button class="button button-primary" type="submit" disabled="@_saving">
-                @(_saving ? "Saving…" : "Save post")
-            </button>
-        </div>
-    </section>
+    <aside class="editor-sidebar">
+        <section class="editor-panel">
+            <div class="section-label">DETAILS</div>
+            <div class="field-row two">
+                <label>Game
+                    <InputSelect @bind-Value="_model.Game">
+                        <option value="@GameKey.WutheringWaves">Wuthering Waves</option>
+                        <option value="@GameKey.NevernessToEverness">Neverness to Everness</option>
+                    </InputSelect>
+                </label>
+                <label>Type
+                    <InputSelect @bind-Value="_model.Kind">
+                        @foreach (var kind in Enum.GetValues<ContentKind>())
+                        {
+                            <option value="@kind">@kind</option>
+                        }
+                    </InputSelect>
+                </label>
+            </div>
+            <label>Title
+                <InputText @bind-Value="_model.Title" placeholder="e.g. Version 3.6 Maintenance" />
+                <ValidationMessage For="() => _model.Title" />
+            </label>
+        </section>
+
+        <section class="editor-panel schedule-panel">
+            <div class="section-label">PUBLICATION</div>
+            <label>Date and time <span class="optional">Europe/Warsaw; blank = draft</span>
+                <InputDate @bind-Value="_model.PublishAtLocal" Type="InputDateType.DateTimeLocal" />
+            </label>
+            @if (!string.IsNullOrWhiteSpace(_error))
+            {
+                <p class="form-error" role="alert">@_error</p>
+            }
+            <div class="form-actions">
+                <a class="button button-quiet" href="/content">Cancel</a>
+                <button class="button button-primary" type="submit" disabled="@_saving">
+                    @(_saving ? "Saving…" : "Save post")
+                </button>
+            </div>
+        </section>
+    </aside>
 </EditForm>
 
 @code {

@@ -23,12 +23,14 @@
 else
 {
     <form class="event-filter" method="get" aria-label="Event filters">
-        <label for="event-game">Game</label>
-        <select id="event-game" name="game" value="@Game">
-            <option value="">All games</option>
-            <option value="WutheringWaves">Wuthering Waves</option>
-            <option value="NevernessToEverness">Neverness to Everness</option>
-        </select>
+        <div>
+            <label for="event-game">Game</label>
+            <select id="event-game" name="game" value="@Game">
+                <option value="">All games</option>
+                <option value="WutheringWaves">Wuthering Waves</option>
+                <option value="NevernessToEverness">Neverness to Everness</option>
+            </select>
+        </div>
         <button class="button button-primary" type="submit">Apply</button>
         @if (!string.IsNullOrWhiteSpace(Game))
         {

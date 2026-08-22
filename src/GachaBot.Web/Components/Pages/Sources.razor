@@ -37,13 +37,12 @@ else
         {
             <article class="source-card">
                 <div class="source-card-head">
-                    <span class="status-chip @(source.HasCompletedBaseline ? "status-active" : "status-scheduled")">@(source.HasCompletedBaseline ? "READY" : "PENDING")</span>
                     <span class="trust-tag">@TrustLabel(source.Trust)</span>
                 </div>
                 <h2>@SourceLabel(source.Key)</h2>
                 <code>@source.Key</code>
                 <dl>
-                    <div><dt>Baseline</dt><dd>@(source.HasCompletedBaseline ? "ready" : "pending")</dd></div>
+                    <div><dt>Baseline</dt><dd class="source-baseline @(source.HasCompletedBaseline ? "is-ready" : "is-pending")">@(source.HasCompletedBaseline ? "Ready" : "Pending initial import")</dd></div>
                     <div><dt>Last import</dt><dd>@FormatInstant(source.LastSuccessfulRunUtc)</dd></div>
                 </dl>
                 @if (!string.IsNullOrWhiteSpace(source.LastFailureMessage))
