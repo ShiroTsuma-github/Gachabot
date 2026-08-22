@@ -12,7 +12,8 @@ public sealed class ContentStore(
     TimeProvider timeProvider,
     GachaBot.Application.Publishing.IGuildDestinationStore? guildDestinations = null,
     IContentRetentionPolicy? retentionPolicy = null)
-    : IIngestionSink, ISourceStateStore, ISourceContentLookup, IContentScheduleStore, IContentManagementStore
+    : IIngestionSink, ISourceStateStore, ISourceContentLookup, IContentScheduleStore, IContentManagementStore,
+        IObsoleteDiscordPublicationStore
 {
     private const int LookupChunkSize = 500;
 
@@ -808,6 +809,7 @@ public sealed class ContentStore(
         var publications = await dbContext.Publications.AsNoTracking()
             .Where(publication =>
                 publication.ContentId == contentId &&
+                publication.State == PublicationState.Published &&
                 publication.ProviderMessageId != null &&
                 publication.DestinationGuildId != null &&
                 publication.DestinationChannelId != null)
@@ -822,6 +824,59 @@ public sealed class ContentStore(
             checked((ulong)publication.DestinationGuildId!.Value),
             checked((ulong)publication.DestinationChannelId!.Value),
             publication.ProviderMessageId!)).ToArray();
+    }
+
+    public async Task<IReadOnlyList<ObsoleteDiscordPublication>> ListForGuildAsync(
+        ulong guildId,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken)
+    {
+        if (guildId == 0 || guildId > long.MaxValue)
+        {
+            return [];
+        }
+
+        var publications = await dbContext.Publications.AsNoTracking()
+            .Where(publication =>
+                publication.DestinationGuildId == checked((long)guildId) &&
+                publication.DestinationChannelId != null &&
+                publication.ProviderMessageId != null &&
+                publication.State == PublicationState.Published &&
+                (publication.Content.Status == ContentStatus.Archived ||
+                 (publication.Content.ExpiresAtUtc != null && publication.Content.ExpiresAtUtc <= nowUtc)))
+            .Select(publication => new ObsoleteDiscordPublication(
+                publication.Id,
+                checked((ulong)publication.DestinationGuildId!.Value),
+                checked((ulong)publication.DestinationChannelId!.Value),
+                publication.ProviderMessageId!))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return publications;
+    }
+
+    public async Task MarkDeletedAsync(
+        IReadOnlyCollection<Guid> publicationIds,
+        DateTimeOffset deletedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        if (publicationIds.Count == 0)
+        {
+            return;
+        }
+
+        var publications = await dbContext.Publications
+            .Where(publication => publicationIds.Contains(publication.Id) && publication.State == PublicationState.Published)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var publication in publications)
+        {
+            publication.State = PublicationState.Deleted;
+            publication.LastError = null;
+            publication.UpdatedAtUtc = deletedAtUtc;
+        }
+
+        if (publications.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public async Task DeleteAsync(Guid contentId, CancellationToken cancellationToken)
@@ -1050,25 +1105,35 @@ public sealed class ContentStore(
         DateTimeOffset? earliestDueAtUtc = null;
         foreach (var destination in destinations.Where(destination => destination.SubscribesTo(content.Game, content.Kind)))
         {
-            var startDueAtUtc = Max(now, startsAtUtc.AddHours(-destination.EventStartOffsetHours));
-            var endDueAtUtc = Max(now, endsAtUtc.AddHours(-destination.EventEndOffsetHours));
-            added |= await AddEventPublicationIfMissingAsync(
-                content,
-                destination,
-                PublicationPurpose.EventStart,
-                startDueAtUtc,
-                now,
-                cancellationToken).ConfigureAwait(false);
-            added |= await AddEventPublicationIfMissingAsync(
-                content,
-                destination,
-                PublicationPurpose.EventEndingReminder,
-                endDueAtUtc,
-                now,
-                cancellationToken).ConfigureAwait(false);
-            earliestDueAtUtc = earliestDueAtUtc is null
-                ? Min(startDueAtUtc, endDueAtUtc)
-                : Min(earliestDueAtUtc.Value, Min(startDueAtUtc, endDueAtUtc));
+            if (destination.EventStartOffsetHours >= 0)
+            {
+                var startDueAtUtc = Max(now, startsAtUtc.AddHours(-destination.EventStartOffsetHours));
+                added |= await AddEventPublicationIfMissingAsync(
+                    content,
+                    destination,
+                    PublicationPurpose.EventStart,
+                    startDueAtUtc,
+                    now,
+                    cancellationToken).ConfigureAwait(false);
+                earliestDueAtUtc = earliestDueAtUtc is null
+                    ? startDueAtUtc
+                    : Min(earliestDueAtUtc.Value, startDueAtUtc);
+            }
+
+            if (destination.EventEndOffsetHours >= 0)
+            {
+                var endDueAtUtc = Max(now, endsAtUtc.AddHours(-destination.EventEndOffsetHours));
+                added |= await AddEventPublicationIfMissingAsync(
+                    content,
+                    destination,
+                    PublicationPurpose.EventEndingReminder,
+                    endDueAtUtc,
+                    now,
+                    cancellationToken).ConfigureAwait(false);
+                earliestDueAtUtc = earliestDueAtUtc is null
+                    ? endDueAtUtc
+                    : Min(earliestDueAtUtc.Value, endDueAtUtc);
+            }
         }
 
         if (earliestDueAtUtc.HasValue)

@@ -96,6 +96,7 @@ public static class DependencyInjection
         services.AddScoped<IContentScheduleStore>(provider => provider.GetRequiredService<CompositeContentStore>());
         services.AddScoped<IContentManagementStore>(provider => provider.GetRequiredService<CompositeContentStore>());
         services.AddScoped<IEventPublicationScheduleStore>(provider => provider.GetRequiredService<CompositeContentStore>());
+        services.AddScoped<IObsoleteDiscordPublicationStore>(provider => provider.GetRequiredService<CompositeContentStore>());
         services.AddScoped<IContentDeletionService, ContentDeletionService>();
         services.AddScoped<IPublicationQueueStore, CompositePublicationQueueStore>();
         services.AddSingleton<IPublicationPreviewRenderer, DiscordPublicationPreviewRenderer>();
@@ -170,8 +171,10 @@ public static class DependencyInjection
         {
             services.AddSingleton<DiscordRestClient>();
             services.AddSingleton<IDiscordPublisher, DiscordChannelPublisher>();
+            services.AddScoped<IGuildObsoleteMessageCleanup, GuildObsoleteMessageCleanup>();
             services.AddHostedService<DiscordGuildSetupWorker>();
             services.AddHostedService<PublicationDispatcher>();
+            services.AddHostedService<ObsoleteDiscordMessageCleanupWorker>();
         }
 
         return services;

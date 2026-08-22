@@ -12,7 +12,8 @@ public sealed class CompositeContentStore(
     GachaBot.Application.Publishing.IGuildDestinationStore guildDestinations,
     IContentRetentionPolicy retentionPolicy)
     : IIngestionSink, ISourceStateStore, ISourceContentLookup, IContentScheduleStore,
-        IContentManagementStore, ISourceStateQuery, GachaBot.Application.Publishing.IEventPublicationScheduleStore
+        IContentManagementStore, ISourceStateQuery, GachaBot.Application.Publishing.IEventPublicationScheduleStore,
+        GachaBot.Application.Publishing.IObsoleteDiscordPublicationStore
 {
     public CompositeContentStore(ISourceDatabaseFactory databaseFactory, TimeProvider timeProvider)
         : this(
@@ -219,6 +220,35 @@ public sealed class CompositeContentStore(
 
     public Task DeleteAsync(Guid contentId, CancellationToken cancellationToken) =>
         WithContentStoreAsync(contentId, store => store.DeleteAsync(contentId, cancellationToken), cancellationToken);
+
+    public async Task<IReadOnlyList<GachaBot.Application.Publishing.ObsoleteDiscordPublication>> ListForGuildAsync(
+        ulong guildId,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken)
+    {
+        var publications = new List<GachaBot.Application.Publishing.ObsoleteDiscordPublication>();
+        foreach (var key in databaseFactory.DatabaseKeys)
+        {
+            publications.AddRange(await WithStoreAsync(
+                key,
+                store => store.ListForGuildAsync(guildId, nowUtc, cancellationToken)).ConfigureAwait(false));
+        }
+
+        return publications;
+    }
+
+    public async Task MarkDeletedAsync(
+        IReadOnlyCollection<Guid> publicationIds,
+        DateTimeOffset deletedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        foreach (var key in databaseFactory.DatabaseKeys)
+        {
+            await WithStoreAsync(
+                key,
+                store => store.MarkDeletedAsync(publicationIds, deletedAtUtc, cancellationToken)).ConfigureAwait(false);
+        }
+    }
 
     public async Task ApproveAsync(Guid contentId, CancellationToken cancellationToken) =>
         await WithContentStoreAsync(

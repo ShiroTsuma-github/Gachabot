@@ -107,6 +107,7 @@ public enum PublicationState
     Published = 3,
     Failed = 4,
     Cancelled = 5,
+    Deleted = 6,
 }
 
 public sealed class PublicationRecord

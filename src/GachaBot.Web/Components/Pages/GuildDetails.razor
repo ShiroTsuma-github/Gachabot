@@ -42,8 +42,10 @@ else
                 <strong>@OffsetLabel(_destination.EventStartOffsetHours)</strong>
                 <span>Ending reminder</span>
                 <strong>@OffsetLabel(_destination.EventEndOffsetHours)</strong>
+                <span>Delete obsolete posts</span>
+                <strong>@(_destination.DeleteObsoleteMessages ? "enabled" : "disabled")</strong>
             </div>
-            <p>Use <code>/gachabot-event-schedule</code> in Discord to change this. Both values range from 0–72 h; for example, use <code>0.5</code>.</p>
+            <p>Use <code>/gachabot-event-schedule</code> in Discord to change event timing. Use <code>-1</code> to disable either post, or 0–72 h (including <code>0.5</code>) to schedule it. Obsolete-post cleanup is configured with <code>/gachabot-configure</code>.</p>
         </article>
 
         <article class="guild-config-panel">
@@ -228,7 +230,9 @@ else
         _ => "Publication",
     };
 
-    private static string OffsetLabel(double offsetHours) => offsetHours == 0
+    private static string OffsetLabel(double offsetHours) => offsetHours < 0
+        ? "disabled"
+        : offsetHours == 0
         ? "at the event time"
         : $"{offsetHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h early";
 
@@ -239,6 +243,7 @@ else
         "Published" => "Sent",
         "Failed" => "Failed",
         "Cancelled" => "Cancelled",
+        "Deleted" => "Removed",
         _ => state,
     };
 }

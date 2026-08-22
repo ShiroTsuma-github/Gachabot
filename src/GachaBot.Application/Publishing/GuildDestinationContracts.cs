@@ -15,7 +15,8 @@ public sealed record GuildDestination(
     double EventStartOffsetHours = 0,
     double EventEndOffsetHours = 48,
     DateTimeOffset? RemovedAtUtc = null,
-    IReadOnlySet<GuildTopicSubscription>? TopicSubscriptions = null);
+    IReadOnlySet<GuildTopicSubscription>? TopicSubscriptions = null,
+    bool DeleteObsoleteMessages = false);
 
 public sealed record GuildTopicSubscription(GameKey Game, ContentKind Kind);
 
@@ -66,6 +67,11 @@ public interface IGuildDestinationStore
         double endOffsetHours,
         CancellationToken cancellationToken);
 
+    Task SetDeleteObsoleteMessagesAsync(
+        ulong guildId,
+        bool enabled,
+        CancellationToken cancellationToken);
+
     Task SetTopicSubscriptionsAsync(
         ulong guildId,
         GameKey game,
@@ -114,4 +120,28 @@ public interface IGuildPublicationHistoryStore
         ulong guildId,
         int limit,
         CancellationToken cancellationToken);
+}
+
+public sealed record ObsoleteDiscordPublication(
+    Guid PublicationId,
+    ulong GuildId,
+    ulong ChannelId,
+    string ProviderMessageId);
+
+public interface IObsoleteDiscordPublicationStore
+{
+    Task<IReadOnlyList<ObsoleteDiscordPublication>> ListForGuildAsync(
+        ulong guildId,
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken);
+
+    Task MarkDeletedAsync(
+        IReadOnlyCollection<Guid> publicationIds,
+        DateTimeOffset deletedAtUtc,
+        CancellationToken cancellationToken);
+}
+
+public interface IGuildObsoleteMessageCleanup
+{
+    Task<int> CleanGuildAsync(ulong guildId, CancellationToken cancellationToken);
 }

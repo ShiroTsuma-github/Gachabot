@@ -28,6 +28,7 @@ public sealed partial class DiscordGuildSetupWorker(
     private const string NevernessToEvernessOption = "neverness-to-everness";
     private const string StartBeforeHoursOption = "start-before-hours";
     private const string EndBeforeHoursOption = "end-before-hours";
+    private const string DeleteObsoletePostsOption = "delete-obsolete-posts";
     private const string SubjectGameOption = "game";
     private const string SubjectComponentPrefix = "gachabot-subjects";
 
@@ -81,6 +82,8 @@ public sealed partial class DiscordGuildSetupWorker(
                     "Post Wuthering Waves", isRequired: false)
                 .AddOption(NevernessToEvernessOption, ApplicationCommandOptionType.Boolean,
                     "Post Neverness to Everness", isRequired: false)
+                .AddOption(DeleteObsoletePostsOption, ApplicationCommandOptionType.Boolean,
+                    "Delete this bot's posts once their content expires or is archived", isRequired: false)
                 .Build();
             var enable = new SlashCommandBuilder()
                 .WithName(EnableCommand)
@@ -99,12 +102,12 @@ public sealed partial class DiscordGuildSetupWorker(
                 .Build();
             var eventSchedule = new SlashCommandBuilder()
                 .WithName(EventScheduleCommand)
-                .WithDescription("Set event posts before start and end (0 to 72 hours)")
+                .WithDescription("Set event posts before start and end (-1 disables, otherwise 0 to 72 h)")
                 .WithDefaultMemberPermissions(GuildPermission.ManageGuild)
                 .AddOption(StartBeforeHoursOption, ApplicationCommandOptionType.Number,
-                    "Hours before event start; 0 means exactly at start", isRequired: true)
+                    "Hours before event start; -1 disables, 0 means exactly at start", isRequired: true)
                 .AddOption(EndBeforeHoursOption, ApplicationCommandOptionType.Number,
-                    "Hours before event end; 0 means exactly at end", isRequired: true)
+                    "Hours before event end; -1 disables, 0 means exactly at end", isRequired: true)
                 .Build();
             var subjects = new SlashCommandBuilder()
                 .WithName(SubjectsCommand)
@@ -246,6 +249,7 @@ public sealed partial class DiscordGuildSetupWorker(
         }
 
         var games = ReadGames(command) ?? current?.Games ?? GuildDestinationGames.All;
+        var deleteObsoletePosts = ReadOptionalBooleanOption(command, DeleteObsoletePostsOption);
         if (games.Count == 0)
         {
             await command.RespondAsync(
@@ -264,16 +268,30 @@ public sealed partial class DiscordGuildSetupWorker(
                 games,
                 CancellationToken.None)
             .ConfigureAwait(false);
+        if (deleteObsoletePosts is { } cleanupEnabled)
+        {
+            await destinations.SetDeleteObsoleteMessagesAsync(member.Guild.Id, cleanupEnabled, CancellationToken.None)
+                .ConfigureAwait(false);
+            if (cleanupEnabled)
+            {
+                await CleanupObsoleteMessagesAsync(member.Guild.Id).ConfigureAwait(false);
+            }
+        }
+
         if (current?.IsEnabled is true)
         {
             await ReconcileEventPublicationsAsync(member.Guild.Id).ConfigureAwait(false);
         }
 
         var channelText = specifiedChannel?.Mention ?? $"<#{channelId}>";
+        var cleanupSummary = deleteObsoletePosts is null
+            ? string.Empty
+            : $" Obsolete-post cleanup: **{(deleteObsoletePosts.Value ? "enabled" : "disabled")}**.";
         await command.RespondAsync(
             current?.IsEnabled is true
-                ? $"GachaBot will continue publishing **{FormatGames(games)}** in {channelText}."
-                : $"Saved **{FormatGames(games)}** and {channelText}; publications are paused. Choose subjects with `/{SubjectsCommand}`, then use `/{EnableCommand}` when ready.",
+                ? $"GachaBot will continue publishing **{FormatGames(games)}** in {channelText}.{cleanupSummary}"
+                : $"Saved **{FormatGames(games)}** and {channelText}; publications are paused. Choose subjects with `/{SubjectsCommand}`, then use `/{EnableCommand}` when ready." +
+                  cleanupSummary,
             ephemeral: true).ConfigureAwait(false);
     }
 
@@ -313,6 +331,7 @@ public sealed partial class DiscordGuildSetupWorker(
               $"**Status:** {(destination.IsEnabled ? "enabled" : "paused")}\n" +
               $"**Event start post:** {FormatStartOffset(destination.EventStartOffsetHours)}\n" +
               $"**Ending reminder:** {FormatEndOffset(destination.EventEndOffsetHours)}\n" +
+              $"**Delete obsolete posts:** {(destination.DeleteObsoleteMessages ? "enabled" : "disabled")}\n" +
               $"**Subjects:**\n{FormatSubjects(destination)}\n" +
               $"Use `/{SubjectsCommand}` to change subjects for a game.";
         await command.RespondAsync(response, ephemeral: true).ConfigureAwait(false);
@@ -335,7 +354,7 @@ public sealed partial class DiscordGuildSetupWorker(
             !TryReadOffset(command, EndBeforeHoursOption, out var endOffsetHours))
         {
             await command.RespondAsync(
-                "Both offsets must be numbers from **0** to **72** hours. Decimals are supported, for example `0.5`.",
+                "Each offset must be `-1` to disable it, or a number from **0** to **72** hours. Decimals are supported, for example `0.5`.",
                 ephemeral: true).ConfigureAwait(false);
             return;
         }
@@ -638,9 +657,22 @@ public sealed partial class DiscordGuildSetupWorker(
         await schedule.ReconcileForGuildAsync(guildId, CancellationToken.None).ConfigureAwait(false);
     }
 
+    private async Task CleanupObsoleteMessagesAsync(ulong guildId)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var cleanup = scope.ServiceProvider.GetRequiredService<IGuildObsoleteMessageCleanup>();
+        await cleanup.CleanGuildAsync(guildId, CancellationToken.None).ConfigureAwait(false);
+    }
+
     private static bool ReadBooleanOption(
         IReadOnlyCollection<SocketSlashCommandDataOption> options,
         string name) => options.SingleOrDefault(option => option.Name == name)?.Value is true;
+
+    private static bool? ReadOptionalBooleanOption(SocketSlashCommand command, string name)
+    {
+        var option = command.Data.Options.SingleOrDefault(item => item.Name == name);
+        return option?.Value is bool value ? value : null;
+    }
 
     private static bool TryReadOffset(SocketSlashCommand command, string name, out double value)
     {
@@ -660,14 +692,18 @@ public sealed partial class DiscordGuildSetupWorker(
             return false;
         }
 
-        return !double.IsNaN(value) && !double.IsInfinity(value) && value is >= 0 and <= 72;
+        return !double.IsNaN(value) && !double.IsInfinity(value) && (value == -1 || value is >= 0 and <= 72);
     }
 
-    private static string FormatStartOffset(double value) => value == 0
+    private static string FormatStartOffset(double value) => value < 0
+        ? "disabled"
+        : value == 0
         ? "at event start"
         : $"{FormatHours(value)} before event start";
 
-    private static string FormatEndOffset(double value) => value == 0
+    private static string FormatEndOffset(double value) => value < 0
+        ? "disabled"
+        : value == 0
         ? "at event end"
         : $"{FormatHours(value)} before event end";
 

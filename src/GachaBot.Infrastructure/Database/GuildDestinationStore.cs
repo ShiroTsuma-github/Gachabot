@@ -33,6 +33,8 @@ public sealed class GuildDestinationRecord
 
     public double EventEndOffsetHours { get; set; } = 48;
 
+    public bool DeleteObsoleteMessages { get; set; }
+
     public DateTimeOffset? RemovedAtUtc { get; set; }
 
     public DateTimeOffset UpdatedAtUtc { get; set; }
@@ -68,6 +70,7 @@ public sealed class GuildConfigurationDbContext(DbContextOptions<GuildConfigurat
             entity.Property(destination => destination.TopicSubscriptionsInitialized).HasDefaultValue(false);
             entity.Property(destination => destination.EventStartOffsetHours).HasDefaultValue(0d);
             entity.Property(destination => destination.EventEndOffsetHours).HasDefaultValue(48d);
+            entity.Property(destination => destination.DeleteObsoleteMessages).HasDefaultValue(false);
             entity.Property(destination => destination.RemovedAtUtc);
         });
         modelBuilder.Entity<GuildTopicSubscriptionRecord>(entity =>
@@ -127,6 +130,9 @@ public sealed class GuildDestinationStore(
             cancellationToken).ConfigureAwait(false);
         await context.Database.ExecuteSqlRawAsync(
             "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"EventEndOffsetHours\" double precision NOT NULL DEFAULT 48;",
+            cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"DeleteObsoleteMessages\" boolean NOT NULL DEFAULT FALSE;",
             cancellationToken).ConfigureAwait(false);
         await context.Database.ExecuteSqlRawAsync(
             "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"RemovedAtUtc\" timestamp with time zone NULL;",
@@ -277,6 +283,21 @@ public sealed class GuildDestinationStore(
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task SetDeleteObsoleteMessagesAsync(
+        ulong guildId,
+        bool enabled,
+        CancellationToken cancellationToken)
+    {
+        ValidateSnowflake(guildId, nameof(guildId));
+        await using var context = databaseFactory.CreateDbContext();
+        var destination = await context.GuildDestinations.SingleOrDefaultAsync(
+            item => item.GuildId == checked((long)guildId), cancellationToken).ConfigureAwait(false)
+            ?? throw new KeyNotFoundException($"Guild '{guildId}' is not configured.");
+        destination.DeleteObsoleteMessages = enabled;
+        destination.UpdatedAtUtc = timeProvider.GetUtcNow();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task SetTopicSubscriptionsAsync(
         ulong guildId,
         GameKey game,
@@ -406,7 +427,8 @@ public sealed class GuildDestinationStore(
         destination.EventStartOffsetHours,
         destination.EventEndOffsetHours,
         destination.RemovedAtUtc,
-        subscriptions.Select(subscription => new GuildTopicSubscription(subscription.Game, subscription.Kind)).ToHashSet());
+        subscriptions.Select(subscription => new GuildTopicSubscription(subscription.Game, subscription.Kind)).ToHashSet(),
+        destination.DeleteObsoleteMessages);
 
     private static void AddTopicSubscriptions(
         GuildConfigurationDbContext context,
@@ -465,9 +487,9 @@ public sealed class GuildDestinationStore(
 
     private static void ValidateOffset(double value, string parameterName)
     {
-        if (double.IsNaN(value) || double.IsInfinity(value) || value is < 0 or > 72)
+        if (double.IsNaN(value) || double.IsInfinity(value) || (value != -1 && value is < 0 or > 72))
         {
-            throw new ArgumentOutOfRangeException(parameterName, "The event notification offset must be between 0 and 72 hours.");
+            throw new ArgumentOutOfRangeException(parameterName, "The event notification offset must be -1 or between 0 and 72 hours.");
         }
     }
 }
@@ -507,6 +529,12 @@ public sealed class LegacyGuildDestinationStore : IGuildDestinationStore
         ulong guildId,
         double startOffsetHours,
         double endOffsetHours,
+        CancellationToken cancellationToken) =>
+        throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
+
+    public Task SetDeleteObsoleteMessagesAsync(
+        ulong guildId,
+        bool enabled,
         CancellationToken cancellationToken) =>
         throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
 

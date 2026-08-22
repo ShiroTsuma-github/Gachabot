@@ -55,6 +55,7 @@ else
                 <dl class="guild-event-timing">
                     <div><dt>Event start</dt><dd>@OffsetLabel(destination.EventStartOffsetHours)</dd></div>
                     <div><dt>End reminder</dt><dd>@OffsetLabel(destination.EventEndOffsetHours)</dd></div>
+                    <div><dt>Post cleanup</dt><dd>@(destination.DeleteObsoleteMessages ? "enabled" : "off")</dd></div>
                 </dl>
                 <a class="guild-history-link" href="@($"/guilds/{destination.GuildId}")">View queue and history →</a>
             </article>
@@ -81,7 +82,9 @@ else
         ? "Wuthering Waves"
         : "Neverness to Everness";
 
-    private static string OffsetLabel(double offsetHours) => offsetHours == 0
+    private static string OffsetLabel(double offsetHours) => offsetHours < 0
+        ? "disabled"
+        : offsetHours == 0
         ? "at the event time"
         : $"{offsetHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h earlier";
 }

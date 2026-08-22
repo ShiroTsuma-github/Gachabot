@@ -241,6 +241,85 @@ public sealed class ContentStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task UpsertAsync_ScheduleUpcomingSkipsEventPostsDisabledForTheGuild()
+    {
+        var now = new DateTimeOffset(2026, 8, 22, 16, 0, 0, TimeSpan.Zero);
+        var destinations = new FixedDestinationStore(
+        [
+            new GuildDestination(
+                101,
+                201,
+                301,
+                true,
+                GuildDestinationGames.All,
+                now,
+                EventStartOffsetHours: -1,
+                EventEndOffsetHours: 24),
+        ]);
+        var store = new ContentStore(_db, new FixedTimeProvider(now), destinations);
+        var startsAt = now.AddHours(8);
+        var endsAt = startsAt.AddDays(7);
+        var snapshot = Snapshot("Ending reminder only") with
+        {
+            Kind = ContentKind.Event,
+            PublishedAtUtc = startsAt,
+            ExpiresAtUtc = endsAt,
+            PublishAtUtc = startsAt,
+        };
+
+        await store.UpsertAsync(snapshot, PublicationDisposition.ScheduleUpcoming, TestContext.Current.CancellationToken);
+
+        var publication = Assert.Single(await _db.Publications.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(PublicationPurpose.EventEndingReminder, publication.Purpose);
+        Assert.Equal(endsAt.AddHours(-24), publication.DueAtUtc);
+    }
+
+    [Fact]
+    public async Task ObsoleteDiscordPublications_AreListedAndMarkedDeleted()
+    {
+        var now = new DateTimeOffset(2026, 8, 22, 16, 0, 0, TimeSpan.Zero);
+        var content = new ContentRecord
+        {
+            Id = Guid.NewGuid(),
+            Identity = "test:expired-event",
+            SourceKey = "test",
+            Game = GameKey.WutheringWaves,
+            Kind = ContentKind.Event,
+            Title = "Expired event",
+            DocumentJson = "[]",
+            DocumentHash = "hash",
+            Status = ContentStatus.Active,
+            CreatedAtUtc = now.AddDays(-2),
+            UpdatedAtUtc = now,
+            ExpiresAtUtc = now.AddMinutes(-1),
+        };
+        var publication = new PublicationRecord
+        {
+            Id = Guid.NewGuid(),
+            Content = content,
+            ContentId = content.Id,
+            DestinationGuildId = 101,
+            DestinationChannelId = 201,
+            DueAtUtc = now.AddDays(-2),
+            State = PublicationState.Published,
+            ProviderMessageId = "9001",
+            CreatedAtUtc = now.AddDays(-2),
+            UpdatedAtUtc = now.AddDays(-2),
+        };
+        _db.ContentItems.Add(content);
+        _db.Publications.Add(publication);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var obsolete = await _store.ListForGuildAsync(101, now, TestContext.Current.CancellationToken);
+        Assert.Equal(publication.Id, Assert.Single(obsolete).PublicationId);
+
+        await _store.MarkDeletedAsync([publication.Id], now, TestContext.Current.CancellationToken);
+
+        Assert.Equal(PublicationState.Deleted, (await _db.Publications.SingleAsync(TestContext.Current.CancellationToken)).State);
+        Assert.Empty(await _store.ListForGuildAsync(101, now, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task UpsertAsync_ScheduleUpcomingQueuesAnActiveEventMissedDuringAnEarlierBaseline()
     {
         var now = new DateTimeOffset(2026, 8, 22, 16, 0, 0, TimeSpan.Zero);
@@ -463,6 +542,12 @@ public sealed class ContentStoreTests : IAsyncLifetime
             ulong guildId,
             double startOffsetHours,
             double endOffsetHours,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task SetDeleteObsoleteMessagesAsync(
+            ulong guildId,
+            bool enabled,
             CancellationToken cancellationToken) =>
             Task.CompletedTask;
 

@@ -79,7 +79,7 @@ Set `Discord__ActivityName=Schmidley` if you want to override the default Discor
 Run these slash commands in each guild. They are intentionally restricted to members with **Manage Server**.
 
 ```text
-/gachabot-configure channel:#updates wuthering-waves:true neverness-to-everness:true
+/gachabot-configure channel:#updates wuthering-waves:true neverness-to-everness:true delete-obsolete-posts:true
 /gachabot-event-schedule start-before-hours:0 end-before-hours:48
 /gachabot-subjects game:Wuthering Waves
 /gachabot-subjects game:Neverness to Everness
@@ -87,7 +87,9 @@ Run these slash commands in each guild. They are intentionally restricted to mem
 /gachabot-status
 ```
 
-`start-before-hours` and `end-before-hours` accept values from `0` to `72`, including fractions such as `0.5`. The defaults publish an event at its start and send an end reminder 48 hours before it finishes. Use `/gachabot-disable` to pause a guild or `/gachabot-enable` to resume it.
+`start-before-hours` and `end-before-hours` accept `-1` to disable that type of event post, or values from `0` to `72`, including fractions such as `0.5`. The defaults publish an event at its start and send an end reminder 48 hours before it finishes. Use `/gachabot-disable` to pause a guild or `/gachabot-enable` to resume it.
+
+`delete-obsolete-posts:true` is a per-guild setting on `/gachabot-configure`. It removes only messages posted by GachaBot after their source content expires or is archived; messages from people and other bots are never touched. Omit the option during later configuration changes to keep the existing setting.
 
 `/gachabot-subjects` opens a private interactive selector for one game. Toggle the subjects you want (events, codes, news, updates, maintenance, characters, and announcements), then press **Save subjects**. Subject choices are stored separately for each game and affect both future posts and pending event reminders.
 

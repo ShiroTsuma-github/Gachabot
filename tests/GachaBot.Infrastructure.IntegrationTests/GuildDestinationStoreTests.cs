@@ -25,8 +25,10 @@ public sealed class GuildDestinationStoreTests
 
         var configured = Assert.Single(await store.ListAsync(TestContext.Current.CancellationToken));
         Assert.False(configured.IsEnabled);
+        Assert.False(configured.DeleteObsoleteMessages);
 
         await store.SetEnabledAsync(100, true, TestContext.Current.CancellationToken);
+        await store.SetDeleteObsoleteMessagesAsync(100, true, TestContext.Current.CancellationToken);
         await store.ConfigureAsync(
             100,
             "Test guild",
@@ -38,6 +40,7 @@ public sealed class GuildDestinationStoreTests
 
         var reconfigured = Assert.Single(await store.ListAsync(TestContext.Current.CancellationToken));
         Assert.True(reconfigured.IsEnabled);
+        Assert.True(reconfigured.DeleteObsoleteMessages);
         Assert.Equal((ulong)201, reconfigured.ChannelId);
         Assert.Equal(new HashSet<GameKey> { GameKey.NevernessToEverness }, reconfigured.Games);
     }
