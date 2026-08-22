@@ -5,58 +5,58 @@
 @inject IPublicationPreviewRenderer PreviewRenderer
 @inject NavigationManager Navigation
 
-<PageTitle>Podgląd treści · Signal Desk</PageTitle>
+<PageTitle>Content preview · Signal Desk</PageTitle>
 
 @if (_details is null)
 {
     <section class="empty-state">
-        <p class="eyebrow">BRAK WPISU</p>
-        <h1>Nie znaleziono treści.</h1>
-        <a href="/content">Wróć do indeksu →</a>
+        <p class="eyebrow">ENTRY NOT FOUND</p>
+        <h1>This content was not found.</h1>
+        <a href="/content">Return to index →</a>
     </section>
 }
 else
 {
     <section class="page-heading compact">
         <div>
-            <p class="eyebrow">PODGLĄD / @_details.SourceKey</p>
+            <p class="eyebrow">PREVIEW / @_details.SourceKey</p>
             <h1>@_details.Title</h1>
-            <p class="lede">Ten sam dokument zasila podgląd i publikator Discord. Nie powstaje drugi format wiadomości.</p>
+            <p class="lede">The same document powers this preview and the Discord publisher. There is no second message format.</p>
         </div>
         <div class="detail-actions">
             @if (_details.AwaitingReview)
             {
-                <button class="button button-primary" @onclick="ApproveAsync">Zatwierdź i publikuj</button>
+                <button class="button button-primary" @onclick="ApproveAsync">Approve and publish</button>
             }
             @if (_details.Status != ContentStatus.Archived)
             {
-                <button class="button button-quiet" @onclick="ArchiveAsync">Archiwizuj</button>
-                <button class="button button-quiet" @onclick="RepublishAsync">Opublikuj ponownie</button>
+                <button class="button button-quiet" @onclick="ArchiveAsync">Archive</button>
+                <button class="button button-quiet" @onclick="RepublishAsync">Publish again</button>
             }
             else
             {
-                <button class="button button-quiet" @onclick="RestoreAsync">Odarchiwizuj</button>
+                <button class="button button-quiet" @onclick="RestoreAsync">Restore</button>
             }
-            <button class="button button-quiet" @onclick="DeleteAsync">Usuń trwale</button>
+            <button class="button button-quiet" @onclick="DeleteAsync">Delete permanently</button>
         </div>
     </section>
 
-    <section class="content-meta" aria-label="Metadane wpisu">
-        <div><span>Gra</span><strong>@GameLabel(_details.Game)</strong></div>
-        <div><span>Typ</span><strong>@_details.Kind</strong></div>
+    <section class="content-meta" aria-label="Content metadata">
+        <div><span>Game</span><strong>@GameLabel(_details.Game)</strong></div>
+        <div><span>Type</span><strong>@_details.Kind</strong></div>
         <div><span>Status</span><strong>@_details.Status</strong></div>
         @if (_details.ArchiveReason is not null)
         {
-            <div><span>Powód archiwizacji</span><strong>@ArchiveReasonLabel(_details.ArchiveReason.Value)</strong></div>
+            <div><span>Archive reason</span><strong>@ArchiveReasonLabel(_details.ArchiveReason.Value)</strong></div>
         }
-        <div><span>Aktualizacja</span><strong>@FormatInstant(_details.UpdatedAtUtc)</strong></div>
+        <div><span>Updated</span><strong>@FormatInstant(_details.UpdatedAtUtc)</strong></div>
         @if (_details.SourcePublishedAtUtc is not null)
         {
-            <div><span>Data źródła</span><strong>@_details.SourcePublishedAtUtc.Value.ToLocalTime().ToString("dd.MM.yyyy")</strong></div>
+            <div><span>Source date</span><strong>@_details.SourcePublishedAtUtc.Value.ToLocalTime().ToString("dd MMM yyyy")</strong></div>
         }
         @if (_details.SourceUrl is not null)
         {
-            <div class="meta-source"><span>Adres źródłowy</span><a href="@_details.SourceUrl" target="_blank" rel="noopener noreferrer">@_details.SourceUrl</a></div>
+            <div class="meta-source"><span>Source URL</span><a href="@_details.SourceUrl" target="_blank" rel="noopener noreferrer">@_details.SourceUrl</a></div>
         }
     </section>
 
@@ -64,18 +64,18 @@ else
     {
         <section class="targeted-publication" aria-labelledby="targeted-publication-heading">
             <div>
-                <p class="eyebrow">PUBLIKACJA CELOWANA</p>
-                <h2 id="targeted-publication-heading">Wyślij tylko do jednej gildii</h2>
-                <p>Do wyboru są wyłącznie aktywne gildie obserwujące @GameLabel(_details.Game).</p>
+                <p class="eyebrow">TARGETED PUBLICATION</p>
+                <h2 id="targeted-publication-heading">Send to one guild only</h2>
+                <p>Only active guilds tracking @GameLabel(_details.Game) can be selected.</p>
             </div>
             @if (_eligibleDestinations.Count == 0)
             {
-                <p class="targeted-publication-empty">Brak aktywnej gildii z subskrypcją tej gry.</p>
+                <p class="targeted-publication-empty">No active guild is subscribed to this game.</p>
             }
             else
             {
                 <div class="targeted-publication-controls">
-                    <label for="target-guild">Gildia docelowa</label>
+                    <label for="target-guild">Destination guild</label>
                     <select id="target-guild" @bind="_selectedGuildId">
                         @foreach (var destination in _eligibleDestinations)
                         {
@@ -83,7 +83,7 @@ else
                         }
                     </select>
                     <button class="button button-primary" @onclick="RepublishToGuildAsync" disabled="@_targetedPublishInProgress">
-                        @(_targetedPublishInProgress ? "Dodaję do kolejki…" : "Wyślij do wybranej gildii")
+                        @(_targetedPublishInProgress ? "Adding to queue…" : "Send to selected guild")
                     </button>
                 </div>
             }
@@ -96,8 +96,8 @@ else
 
     <div class="preview-grid">
         <section class="extracted-panel">
-            <div class="section-label">Dane wyciągnięte ze źródła</div>
-            <p class="panel-note">Bloki po normalizacji i przed renderowaniem dla Discord.</p>
+            <div class="section-label">EXTRACTED SOURCE DATA</div>
+            <p class="panel-note">Blocks after normalization and before rendering for Discord.</p>
             <div class="block-stack">
                 @foreach (var block in _details.Document.Blocks)
                 {
@@ -144,31 +144,31 @@ else
         </section>
 
         <section class="discord-panel">
-            <div class="section-label">Podgląd Discord</div>
-            <p class="panel-note">Symulacja pokazuje układ treści. Klient Discord może użyć innej czcionki lub szerokości.</p>
-            <p class="preview-subtitle">Symulacja wyglądu</p>
+            <div class="section-label">DISCORD PREVIEW</div>
+            <p class="panel-note">This simulation shows the content layout. The Discord client may use a different font or width.</p>
+            <p class="preview-subtitle">Appearance simulation</p>
             <div class="discord-channel">
                 @foreach (var message in _preview!.Messages)
                 {
                     <article class="discord-message">
                         <div class="discord-avatar" aria-hidden="true">GB</div>
                         <div class="discord-content">
-                            <header><strong>GachaBot</strong><span>BOT</span><time>dzisiaj</time></header>
+                            <header><strong>GachaBot</strong><span>BOT</span><time>today</time></header>
                             @if (!string.IsNullOrWhiteSpace(message.Content))
                             {
                                 @foreach (var autoEmbedLink in AutoEmbedLinks(message.Content))
                                 {
                                     <a class="discord-message-copy" href="@autoEmbedLink" target="_blank" rel="noopener noreferrer">@autoEmbedLink</a>
-                                    <section class="discord-native-video" aria-label="Natywny podgląd YouTube">
+                                    <section class="discord-native-video" aria-label="Native YouTube preview">
                                         <span>YOUTUBE · LINK EMBED</span>
-                                        <strong>Natywny podgląd YouTube</strong>
-                                        <small>Po publikacji Discord pobierze tytuł, miniaturę i odtwarzacz filmu.</small>
+                                        <strong>Native YouTube preview</strong>
+                                        <small>After publication, Discord will fetch the title, thumbnail, and video player.</small>
                                     </section>
                                 }
                             }
                             @foreach (var embed in message.Embeds)
                             {
-                                <section class="discord-rich-embed" style="@EmbedAccent(embed.Color)" aria-label="Rich embed Discord">
+                                <section class="discord-rich-embed" style="@EmbedAccent(embed.Color)" aria-label="Discord rich embed">
                                     @if (embed.Title is not null)
                                     {
                                         if (embed.Url is not null)
@@ -211,7 +211,7 @@ else
                 }
             </div>
             <details class="payload-details">
-                <summary>Dokładny payload · @_preview.Messages.Count wiadomości</summary>
+                <summary>Exact payload · @_preview.Messages.Count messages</summary>
                 @foreach (var message in _preview.Messages)
                 {
                     <pre>@PayloadJson(message)</pre>
@@ -291,11 +291,11 @@ else
         {
             await ContentStore.RepublishToGuildAsync(Id, _selectedGuildId.Value, CancellationToken.None);
             var destination = _eligibleDestinations.Single(item => item.GuildId == _selectedGuildId.Value);
-            _targetedPublishMessage = $"Dodano publikację dla {DisplayGuildName(destination)} do kolejki.";
+            _targetedPublishMessage = $"Added a publication for {DisplayGuildName(destination)} to the queue.";
         }
         catch (Exception exception)
         {
-            _targetedPublishMessage = $"Nie udało się dodać publikacji: {exception.Message}";
+            _targetedPublishMessage = $"Could not add the publication: {exception.Message}";
         }
         finally
         {
@@ -311,10 +311,10 @@ else
 
     private static string ArchiveReasonLabel(ArchiveReason reason) => reason switch
     {
-        ArchiveReason.Manual => "Ręcznie",
-        ArchiveReason.Expired => "Wygasł",
-        ArchiveReason.Retention => "Okres retencji",
-        ArchiveReason.Superseded => "Zastąpiony nowszym wpisem",
+        ArchiveReason.Manual => "Manual",
+        ArchiveReason.Expired => "Expired",
+        ArchiveReason.Retention => "Retention period",
+        ArchiveReason.Superseded => "Superseded by a newer entry",
         _ => reason.ToString(),
     };
 
@@ -323,10 +323,10 @@ else
         : "Neverness to Everness";
 
     private static string FormatInstant(DateTimeOffset value) =>
-        value.ToLocalTime().ToString("dd.MM.yyyy · HH:mm");
+        value.ToLocalTime().ToString("dd MMM yyyy · HH:mm");
 
     private static string DisplayGuildName(GuildDestination destination) =>
-        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Gildia {destination.GuildId}" : destination.GuildName;
+        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Guild {destination.GuildId}" : destination.GuildName;
 
     private static string DisplayChannelName(GuildDestination destination) =>
         string.IsNullOrWhiteSpace(destination.ChannelName) ? destination.ChannelId.ToString() : destination.ChannelName;

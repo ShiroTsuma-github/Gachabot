@@ -3,56 +3,56 @@
 @inject IGuildPublicationHistoryStore PublicationHistory
 @inject TimeProvider Clock
 
-<PageTitle>Historia gildii · Signal Desk</PageTitle>
+<PageTitle>Guild history · Signal Desk</PageTitle>
 
 @if (_destination is null)
 {
     <section class="empty-state">
-        <p class="eyebrow">BRAK GILDII</p>
-        <h1>Nie znaleziono tej konfiguracji.</h1>
-        <a href="/guilds">Wróć do gildii →</a>
+        <p class="eyebrow">GUILD NOT FOUND</p>
+        <h1>This configuration was not found.</h1>
+        <a href="/guilds">Return to guilds →</a>
     </section>
 }
 else
 {
     <section class="page-heading compact">
         <div>
-            <p class="eyebrow">GILDIA / @_destination.GuildId</p>
+            <p class="eyebrow">GUILD / @_destination.GuildId</p>
             <h1>@DisplayGuildName(_destination)</h1>
             <p class="lede">
-                Kanał docelowy: <a href="@ChannelUrl(_destination)" target="_blank" rel="noopener noreferrer">#@DisplayChannelName(_destination) ↗</a>
-                · status: <strong>@(_destination.IsEnabled ? "aktywny" : "wstrzymany")</strong>.
+                Destination channel: <a href="@ChannelUrl(_destination)" target="_blank" rel="noopener noreferrer">#@DisplayChannelName(_destination) ↗</a>
+                · status: <strong>@(_destination.IsEnabled ? "active" : "paused")</strong>.
             </p>
         </div>
-        <a class="button button-quiet" href="/guilds">← Wszystkie gildie</a>
+        <a class="button button-quiet" href="/guilds">← All guilds</a>
     </section>
 
     <section class="guild-detail-grid">
         <article class="guild-config-panel">
-            <div class="section-label">OBSERWOWANE GRY</div>
+            <div class="section-label">TRACKED GAMES</div>
             <div class="guild-topics large">
                 @foreach (var game in _destination.Games.OrderBy(game => game))
                 {
                     <span>@GameLabel(game)</span>
                 }
             </div>
-            <p>Zmiany kanału, stanu i obserwowanych gier wykonuje administrator przez <code>/gachabot-configure</code>, <code>/gachabot-enable</code> oraz <code>/gachabot-disable</code>.</p>
+            <p>An administrator can change the channel, status, and tracked games with <code>/gachabot-configure</code>, <code>/gachabot-enable</code>, and <code>/gachabot-disable</code>.</p>
             <div class="event-notification-settings">
-                <span>Start wydarzenia</span>
+                <span>Event start</span>
                 <strong>@OffsetLabel(_destination.EventStartOffsetHours)</strong>
-                <span>Przypomnienie o końcu</span>
+                <span>Ending reminder</span>
                 <strong>@OffsetLabel(_destination.EventEndOffsetHours)</strong>
             </div>
-            <p>Zmienia to komenda <code>/gachabot-event-schedule</code> w Discordzie. Zakres obu wartości: 0–72 h; możesz podać np. <code>0.5</code>.</p>
+            <p>Use <code>/gachabot-event-schedule</code> in Discord to change this. Both values range from 0–72 h; for example, use <code>0.5</code>.</p>
         </article>
 
         <article class="guild-config-panel">
-            <div class="section-label">KONFIGURACJA</div>
+            <div class="section-label">CONFIGURATION</div>
             <dl class="guild-facts">
-                <div><dt>Identyfikator gildii</dt><dd>@_destination.GuildId</dd></div>
-                <div><dt>Identyfikator kanału</dt><dd>@_destination.ChannelId</dd></div>
-                <div><dt>Skonfigurował</dt><dd>@_destination.ConfiguredByUserId</dd></div>
-                <div><dt>Ostatnia zmiana</dt><dd>@_destination.UpdatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm")</dd></div>
+                <div><dt>Guild ID</dt><dd>@_destination.GuildId</dd></div>
+                <div><dt>Channel ID</dt><dd>@_destination.ChannelId</dd></div>
+                <div><dt>Configured by</dt><dd>@_destination.ConfiguredByUserId</dd></div>
+                <div><dt>Last changed</dt><dd>@_destination.UpdatedAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</dd></div>
             </dl>
         </article>
     </section>
@@ -60,15 +60,15 @@ else
     <section class="guild-outbox" aria-labelledby="scheduled-publications-heading">
         <div class="outbox-heading">
             <div>
-                <p class="eyebrow">OUTBOX / ZAPLANOWANE</p>
-                <h2 id="scheduled-publications-heading">Co zostanie opublikowane</h2>
-                <p>Pozycje oczekujące na wysłanie do kanału <strong>#@DisplayChannelName(_destination)</strong>.</p>
+                <p class="eyebrow">OUTBOX / SCHEDULED</p>
+                <h2 id="scheduled-publications-heading">What will be published</h2>
+                <p>Items waiting to be sent to <strong>#@DisplayChannelName(_destination)</strong>.</p>
             </div>
-            <span>@_pending.Count oczekujących</span>
+            <span>@_pending.Count pending</span>
         </div>
         @if (_pending.Count == 0)
         {
-            <p class="empty-history">Nie ma obecnie zaplanowanych publikacji dla tej gildii.</p>
+            <p class="empty-history">There are no scheduled publications for this guild.</p>
         }
         else
         {
@@ -88,7 +88,7 @@ else
                         <a class="scheduled-publication-title" href="@($"/content/{item.ContentId}")">@item.Title</a>
                         <div class="scheduled-publication-time">
                             <span>@DueLabel(item)</span>
-                            <time datetime="@item.DueAtUtc.ToString("O")">@item.DueAtUtc.ToLocalTime().ToString("dd.MM.yyyy · HH:mm")</time>
+                            <time datetime="@item.DueAtUtc.ToString("O")">@item.DueAtUtc.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time>
                         </div>
                     </article>
                 }
@@ -99,14 +99,14 @@ else
     <section class="publication-history">
         <div class="history-heading">
             <div>
-                <p class="eyebrow">HISTORIA / OSTATNIE 50</p>
-                <h2>Wysłane i rozliczone publikacje</h2>
+                <p class="eyebrow">HISTORY / LAST 50</p>
+                <h2>Sent and settled publications</h2>
             </div>
-            <span>@_history.Count rekordów</span>
+            <span>@_history.Count records</span>
         </div>
         @if (_history.Count == 0)
         {
-            <p class="empty-history">Ta gildia nie ma jeszcze historii wysyłek.</p>
+            <p class="empty-history">This guild has no delivery history yet.</p>
         }
         else
         {
@@ -114,11 +114,11 @@ else
                 <table class="data-table publication-table">
                     <thead>
                         <tr>
-                            <th>Treść</th>
-                            <th>Gra / typ</th>
-                            <th>Stan</th>
-                            <th>Aktualizacja</th>
-                            <th>Próby</th>
+                            <th>Content</th>
+                            <th>Game / type</th>
+                            <th>State</th>
+                            <th>Updated</th>
+                            <th>Attempts</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -134,7 +134,7 @@ else
                                 </td>
                                 <td><span class="game-code">@GameCode(item.Game)</span><small>@KindLabel(item.Kind) · @PurposeLabel(item.Purpose)</small></td>
                                 <td><span class="status-chip publication-state-@item.State.ToLowerInvariant()">@StateLabel(item.State)</span></td>
-                                <td><time>@item.UpdatedAtUtc.ToLocalTime().ToString("dd.MM · HH:mm")</time></td>
+                                <td><time>@item.UpdatedAtUtc.ToLocalTime().ToString("dd MMM · HH:mm")</time></td>
                                 <td>@item.AttemptCount</td>
                             </tr>
                         }
@@ -181,7 +181,7 @@ else
     }
 
     private static string DisplayGuildName(GuildDestination destination) =>
-        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Gildia {destination.GuildId}" : destination.GuildName;
+        string.IsNullOrWhiteSpace(destination.GuildName) ? $"Guild {destination.GuildId}" : destination.GuildName;
 
     private static string DisplayChannelName(GuildDestination destination) =>
         string.IsNullOrWhiteSpace(destination.ChannelName) ? destination.ChannelId.ToString() : destination.ChannelName;
@@ -200,45 +200,45 @@ else
         var remaining = item.DueAtUtc - Clock.GetUtcNow();
         if (remaining <= TimeSpan.Zero)
         {
-            return item.State == "Processing" ? "trwa wysyłanie" : "gotowe do wysłania";
+            return item.State == "Processing" ? "sending now" : "ready to send";
         }
 
         return remaining.TotalDays >= 1
-            ? $"za {(int)Math.Ceiling(remaining.TotalDays)} dni"
+            ? $"in {(int)Math.Ceiling(remaining.TotalDays)} days"
             : remaining.TotalHours >= 1
-                ? $"za {(int)Math.Ceiling(remaining.TotalHours)} h"
-                : $"za {(int)Math.Ceiling(remaining.TotalMinutes)} min";
+                ? $"in {(int)Math.Ceiling(remaining.TotalHours)} h"
+                : $"in {(int)Math.Ceiling(remaining.TotalMinutes)} min";
     }
 
     private static string KindLabel(string kind) => kind switch
     {
-        "Event" => "Wydarzenie",
-        "News" => "Aktualność",
-        "Announcement" => "Ogłoszenie",
-        "Update" => "Aktualizacja",
-        "Maintenance" => "Utrzymanie",
-        "RedeemCode" => "Kod",
+        "Event" => "Event",
+        "News" => "News",
+        "Announcement" => "Announcement",
+        "Update" => "Update",
+        "Maintenance" => "Maintenance",
+        "RedeemCode" => "Code",
         _ => kind,
     };
 
     private static string PurposeLabel(string purpose) => purpose switch
     {
-        "EventStart" => "Start wydarzenia",
-        "EventEndingReminder" => "Przypomnienie o końcu",
-        _ => "Publikacja",
+        "EventStart" => "Event start",
+        "EventEndingReminder" => "Ending reminder",
+        _ => "Publication",
     };
 
     private static string OffsetLabel(double offsetHours) => offsetHours == 0
-        ? "dokładnie w momencie"
-        : $"{offsetHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h wcześniej";
+        ? "at the event time"
+        : $"{offsetHours.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)} h early";
 
     private static string StateLabel(string state) => state switch
     {
-        "Pending" => "Oczekuje",
-        "Processing" => "Wysyłanie",
-        "Published" => "Wysłano",
-        "Failed" => "Błąd",
-        "Cancelled" => "Anulowano",
+        "Pending" => "Pending",
+        "Processing" => "Sending",
+        "Published" => "Sent",
+        "Failed" => "Failed",
+        "Cancelled" => "Cancelled",
         _ => state,
     };
 }

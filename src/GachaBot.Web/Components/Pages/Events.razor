@@ -300,13 +300,13 @@ else
 
     private static string WeekdayName(DateOnly day) => day.DayOfWeek switch
     {
-        DayOfWeek.Monday => "Pon",
-        DayOfWeek.Tuesday => "Wto",
-        DayOfWeek.Wednesday => "Śro",
-        DayOfWeek.Thursday => "Czw",
-        DayOfWeek.Friday => "Pią",
-        DayOfWeek.Saturday => "Sob",
-        _ => "Nie",
+        DayOfWeek.Monday => "Mon",
+        DayOfWeek.Tuesday => "Tue",
+        DayOfWeek.Wednesday => "Wed",
+        DayOfWeek.Thursday => "Thu",
+        DayOfWeek.Friday => "Fri",
+        DayOfWeek.Saturday => "Sat",
+        _ => "Sun",
     };
 
     private static string ArchivedMediaUrl(string sourceKey, Guid contentId, Uri sourceUrl) =>

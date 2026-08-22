@@ -1,63 +1,63 @@
 @page "/guide"
 
-<PageTitle>Jak korzystać · Signal Desk</PageTitle>
+<PageTitle>How it works · Signal Desk</PageTitle>
 
 <section class="page-heading compact guide-heading">
     <div>
-        <p class="eyebrow">INSTRUKCJA / 06</p>
-        <h1>Jak korzystać</h1>
-        <p class="lede">Od pierwszego uruchomienia źródła do publikacji wiadomości na Discord.</p>
+        <p class="eyebrow">GUIDE / 06</p>
+        <h1>How it works</h1>
+        <p class="lede">From the first source scan to a message published on Discord.</p>
     </div>
 </section>
 
-<section class="guide-flow" aria-label="Proces pracy">
-    <article><span>01</span><h2>Odśwież źródło</h2><p>Otwórz <a href="/sources">Źródła</a>. Użyj przycisku przy konkretnej karcie albo odśwież wszystkie źródła.</p></article>
-    <article><span>02</span><h2>Sprawdź wynik</h2><p>Po skanie karta pokaże liczbę odczytanych, utworzonych i zmienionych pozycji. Link pod kartą otworzy treści z tego źródła.</p></article>
-    <article><span>03</span><h2>Otwórz podgląd</h2><p>Kliknij tytuł w indeksie. Lewa kolumna pokazuje wyciągnięte bloki, prawa dokładne rich embedy i payload przygotowany dla Discord.</p></article>
-    <article><span>04</span><h2>Zatwierdź lub zaplanuj</h2><p>Treści ze źródeł wymagających kontroli czekają na zatwierdzenie. Ręczny wpis możesz zapisać jako szkic albo ustawić datę publikacji.</p></article>
+<section class="guide-flow" aria-label="Workflow">
+    <article><span>01</span><h2>Refresh a source</h2><p>Open <a href="/sources">Sources</a>. Refresh one source from its card, or scan every source at once.</p></article>
+    <article><span>02</span><h2>Review the result</h2><p>After a scan, the card shows the number of items read, created, and changed. Its link opens the content from that source.</p></article>
+    <article><span>03</span><h2>Open the preview</h2><p>Select a title in the index. The left column shows extracted blocks; the right one shows the exact rich embeds and payload prepared for Discord.</p></article>
+    <article><span>04</span><h2>Approve or schedule</h2><p>Content from sources that require review waits for approval. A manual entry can be saved as a draft or scheduled for publication.</p></article>
 </section>
 
 <section class="guide-reference">
     <article>
-        <p class="eyebrow">FORMAT DISCORD</p>
-        <h2>Jeden dokument, jeden plan publikacji</h2>
-        <p>Tytuł embedu prowadzi do źródła. Tekst i zwykłe linki tworzą opis, dane key/value pola, a grafiki obraz główny i kolejne embedy. Link do filmu YouTube trafia do treści wiadomości, aby Discord utworzył własny odtwarzacz; wymaga to uprawnienia Embed Links. Podgląd i publikator korzystają z tego samego wyniku kompozytora.</p>
+        <p class="eyebrow">DISCORD FORMAT</p>
+        <h2>One document, one publication plan</h2>
+        <p>The embed title links to the source. Text and ordinary links form its description, key/value data becomes fields, and images become the primary image and subsequent embeds. A YouTube URL remains in the message body so Discord can render its own player; this requires the Embed Links permission. The preview and publisher use the same composer output.</p>
     </article>
     <article>
-        <p class="eyebrow">LIMITY API</p>
-        <h2>Podział odbywa się automatycznie</h2>
-        <p>Bot pilnuje 4096 znaków opisu, 25 pól na embed, 10 embedów oraz 6000 znaków embedów na wiadomość. Większy wpis trafia do kilku aktualizowalnych wiadomości Discord.</p>
+        <p class="eyebrow">API LIMITS</p>
+        <h2>Splitting happens automatically</h2>
+        <p>The bot observes Discord's 4,096-character description limit, 25 fields per embed, 10 embeds, and 6,000 embed characters per message. Larger entries are split into multiple updatable Discord messages.</p>
     </article>
 </section>
 
 <section class="guide-reference">
     <article>
-        <p class="eyebrow">PIERWSZE URUCHOMIENIE</p>
-        <h2>Baseline nie publikuje starego katalogu</h2>
-        <p>Pierwszy poprawny odczyt zapisuje stan źródła. Kolejne odczyty porównują hash dokumentu z zapisem PostgreSQL. Bot tworzy rewizję i publikację dopiero po wykryciu nowej lub zmienionej treści zgodnie z polityką zaufania źródła.</p>
+        <p class="eyebrow">FIRST RUN</p>
+        <h2>The baseline does not publish an old catalogue</h2>
+        <p>The first successful scan stores the source state. Later scans compare a document hash against PostgreSQL. The bot creates a revision and publication only after finding new or changed content, according to the source trust policy.</p>
     </article>
     <article>
-        <p class="eyebrow">STATUSY</p>
+        <p class="eyebrow">STATUSES</p>
         <dl class="guide-definitions">
-            <div><dt>Szkic</dt><dd>Wpis bez terminu albo materiał oczekujący na kontrolę.</dd></div>
-            <div><dt>Zaplanowany</dt><dd>Wpis znajduje się w trwałej kolejce publikacji.</dd></div>
-            <div><dt>Opublikowany</dt><dd>Discord zwrócił identyfikator wiadomości.</dd></div>
-            <div><dt>Archiwum</dt><dd>Dashboard pokazuje powód: ręczny, wygasły albo zastąpiony. Ręcznie zarchiwizowanego wpisu refetch nie reaktywuje.</dd></div>
+            <div><dt>Draft</dt><dd>An entry without a due time, or material waiting for review.</dd></div>
+            <div><dt>Scheduled</dt><dd>An entry in the durable publication queue.</dd></div>
+            <div><dt>Published</dt><dd>Discord returned a message identifier.</dd></div>
+            <div><dt>Archive</dt><dd>The dashboard shows why it was archived: manual, expired, or superseded. A manually archived item is not reactivated by a refetch.</dd></div>
         </dl>
     </article>
 </section>
 
 <section class="guide-reference">
     <article>
-        <p class="eyebrow">WPIS RĘCZNY</p>
-        <h2>Dodaj komunikat spoza automatycznych źródeł</h2>
-        <p>Otwórz <a href="/content/new">Nowy wpis</a>, wybierz grę i typ, dodaj tekst, linki oraz adresy grafik. Data i godzina używają strefy przeglądarki, a baza zapisuje termin w UTC.</p>
-        <p>Każde źródło ma osobny schemat w PostgreSQL, a wpisy ręczne trafiają do schematu <code>manual</code>. Pełny reset wykonuj świadomie na serwerze PostgreSQL; nie usuwaj plików z kontenera aplikacji.</p>
+        <p class="eyebrow">MANUAL ENTRY</p>
+        <h2>Add an announcement outside automatic sources</h2>
+        <p>Open <a href="/content/new">New entry</a>, choose a game and type, then add text, links, and image URLs. Date and time use the browser's timezone while the database stores them in UTC.</p>
+        <p>Every source has its own PostgreSQL schema; manual entries use the <code>manual</code> schema. Perform a full reset carefully on the PostgreSQL server—never by deleting files from the application container.</p>
     </article>
     <article>
-        <p class="eyebrow">BŁĄD ŹRÓDŁA</p>
-        <h2>Sprawdź kartę źródła i logi</h2>
-        <p>Nieudany odczyt nie usuwa poprzednich danych. Karta zachowuje czas próby oraz skrócony komunikat błędu. Szczegóły znajdziesz w logach kontenera.</p>
+        <p class="eyebrow">SOURCE ERROR</p>
+        <h2>Check the source card and logs</h2>
+        <p>A failed scan does not remove previous data. The card keeps the attempt time and a shortened error message. Full details are available in the container logs.</p>
         <pre><code>docker compose logs --tail 200 gachabot</code></pre>
     </article>
 </section>

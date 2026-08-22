@@ -28,14 +28,14 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
     }
 
     [Theory]
-    [InlineData("/", "Aktualizacje bez szumu.")]
-    [InlineData("/events", "Wydarzenia")]
-    [InlineData("/content/new", "Nowy wpis")]
-    [InlineData("/sources", "Źródła")]
-    [InlineData("/archive", "Archiwum")]
-    [InlineData("/guilds", "Gildie")]
-    [InlineData("/guilds/1", "Co zostanie opublikowane")]
-    [InlineData("/guide", "Jak korzystać")]
+    [InlineData("/", "Updates without the noise.")]
+    [InlineData("/events", "Events")]
+    [InlineData("/content/new", "New entry")]
+    [InlineData("/sources", "Sources")]
+    [InlineData("/archive", "Archive")]
+    [InlineData("/guilds", "Guilds")]
+    [InlineData("/guilds/1", "What will be published")]
+    [InlineData("/guide", "How it works")]
     public async Task DashboardRoute_ReturnsExpectedLandmark(string route, string landmark)
     {
         using var response = await _client.GetAsync(route, TestContext.Current.CancellationToken);
@@ -67,8 +67,8 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
 
         response.EnsureSuccessStatusCode();
         Assert.Contains("official-wuthering-waves", decodedHtml, StringComparison.Ordinal);
-        Assert.Contains("Odśwież to źródło", decodedHtml, StringComparison.Ordinal);
-        Assert.Contains("Zobacz wyciągnięte treści", decodedHtml, StringComparison.Ordinal);
+        Assert.Contains("Refresh source", decodedHtml, StringComparison.Ordinal);
+        Assert.Contains("View extracted content", decodedHtml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -101,10 +101,10 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         var decodedHtml = System.Net.WebUtility.HtmlDecode(html);
 
         response.EnsureSuccessStatusCode();
-        Assert.Contains("Dane wyciągnięte ze źródła", html, StringComparison.Ordinal);
-        Assert.Contains("Podgląd Discord", html, StringComparison.Ordinal);
-        Assert.Contains("Symulacja wyglądu", html, StringComparison.Ordinal);
-        Assert.Contains("Dokładny payload", html, StringComparison.Ordinal);
+        Assert.Contains("EXTRACTED SOURCE DATA", html, StringComparison.Ordinal);
+        Assert.Contains("DISCORD PREVIEW", html, StringComparison.Ordinal);
+        Assert.Contains("Appearance simulation", html, StringComparison.Ordinal);
+        Assert.Contains("Exact payload", html, StringComparison.Ordinal);
         Assert.Contains("Event heading", html, StringComparison.Ordinal);
         Assert.Contains("https://cdn.example.com/event.webp", html, StringComparison.Ordinal);
         Assert.Contains($"/media/", html, StringComparison.Ordinal);
@@ -112,7 +112,7 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         Assert.Contains("Rich embed Discord", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("\"Title\": \"Preview event\"", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("\"Color\": 5793266", decodedHtml, StringComparison.Ordinal);
-        Assert.Contains("Natywny podgląd YouTube", decodedHtml, StringComparison.Ordinal);
+        Assert.Contains("Native YouTube preview", decodedHtml, StringComparison.Ordinal);
         Assert.Contains("https://www.youtube.com/watch?v=dQw4w9WgXcQ", decodedHtml, StringComparison.Ordinal);
     }
 
@@ -144,7 +144,7 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         Assert.Contains("aria-sort=\"ascending\"", html, StringComparison.Ordinal);
         Assert.Contains("sort=title", html, StringComparison.Ordinal);
         Assert.Contains("content-game", html, StringComparison.Ordinal);
-        Assert.Contains("Kontekst publikacji", html, StringComparison.Ordinal);
+        Assert.Contains("Publication context", html, StringComparison.Ordinal);
         Assert.True(
             html.IndexOf("Alpha update", StringComparison.Ordinal) <
             html.IndexOf("Zulu update", StringComparison.Ordinal));
@@ -179,9 +179,9 @@ public sealed class DashboardFunctionalTests : IClassFixture<DashboardApplicatio
         var html = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         response.EnsureSuccessStatusCode();
-        Assert.Contains("Do ", html, StringComparison.Ordinal);
+        Assert.Contains("Until ", html, StringComparison.Ordinal);
         Assert.Contains("Combat Event", html, StringComparison.Ordinal);
-        Assert.Contains("KALENDARZ / 02", html, StringComparison.Ordinal);
+        Assert.Contains("CALENDAR / 02", html, StringComparison.Ordinal);
         Assert.Contains("calendar-event-rails", html, StringComparison.Ordinal);
         Assert.Contains("calendar-event-title", html, StringComparison.Ordinal);
         Assert.Contains("calendar-event-art", html, StringComparison.Ordinal);
