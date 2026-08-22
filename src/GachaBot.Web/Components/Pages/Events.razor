@@ -1,9 +1,6 @@
 @page "/events"
-@using Microsoft.JSInterop
-@implements IAsyncDisposable
 @inject IContentManagementStore ContentStore
 @inject TimeProvider Clock
-@inject IJSRuntime JS
 
 <PageTitle>Events · Schmidley</PageTitle>
 
@@ -56,7 +53,7 @@ else
                 </div>
                 <span class="calendar-legend"><i class="active"></i> active <i class="upcoming"></i> upcoming</span>
             </header>
-            <div class="calendar-timeline-scroll" @ref="_timelineViewport">
+            <div class="calendar-timeline-scroll">
                 <div class="calendar-timeline" style="--calendar-days: @CalendarDays.Count">
                     <div class="calendar-timeline-days">
                         @foreach (var day in CalendarDays)
@@ -120,9 +117,6 @@ else
     public string? Game { get; set; }
 
     private IReadOnlyList<CalendarEvent>? _events;
-    private ElementReference _timelineViewport;
-    private IJSObjectReference? _timelineModule;
-    private IJSObjectReference? _timelineWheel;
 
     private DateOnly Today => DateOnly.FromDateTime(Clock.GetLocalNow().DateTime);
 
@@ -187,29 +181,6 @@ else
         }
 
         _events = calendarEvents;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_events is not null && _timelineModule is null)
-        {
-            _timelineModule = await JS.InvokeAsync<IJSObjectReference>("import", "./calendar-timeline.js");
-            _timelineWheel = await _timelineModule.InvokeAsync<IJSObjectReference>("enableHorizontalWheel", _timelineViewport);
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_timelineWheel is not null)
-        {
-            await _timelineWheel.InvokeVoidAsync("dispose");
-            await _timelineWheel.DisposeAsync();
-        }
-
-        if (_timelineModule is not null)
-        {
-            await _timelineModule.DisposeAsync();
-        }
     }
 
     private static IReadOnlyDictionary<Guid, TimelinePlacement> AllocateEventPlacements(IEnumerable<CalendarEvent> events)
