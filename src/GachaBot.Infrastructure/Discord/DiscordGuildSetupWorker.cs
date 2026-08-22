@@ -73,7 +73,7 @@ public sealed partial class DiscordGuildSetupWorker(
         {
             var configure = new SlashCommandBuilder()
                 .WithName(ConfigureCommand)
-                .WithDescription("Configure the channel and games posted by GachaBot")
+                .WithDescription("Save the publication channel and games without enabling posts")
                 .WithDefaultMemberPermissions(GuildPermission.ManageGuild)
                 .AddOption("channel", ApplicationCommandOptionType.Channel,
                     "New text channel; omit it to keep the current one", isRequired: false)
@@ -264,10 +264,16 @@ public sealed partial class DiscordGuildSetupWorker(
                 games,
                 CancellationToken.None)
             .ConfigureAwait(false);
-        await ReconcileEventPublicationsAsync(member.Guild.Id).ConfigureAwait(false);
+        if (current?.IsEnabled is true)
+        {
+            await ReconcileEventPublicationsAsync(member.Guild.Id).ConfigureAwait(false);
+        }
+
         var channelText = specifiedChannel?.Mention ?? $"<#{channelId}>";
         await command.RespondAsync(
-            $"GachaBot will publish **{FormatGames(games)}** in {channelText}. Use `/{DisableCommand}` to pause it.",
+            current?.IsEnabled is true
+                ? $"GachaBot will continue publishing **{FormatGames(games)}** in {channelText}."
+                : $"Saved **{FormatGames(games)}** and {channelText}; publications are paused. Choose subjects with `/{SubjectsCommand}`, then use `/{EnableCommand}` when ready.",
             ephemeral: true).ConfigureAwait(false);
     }
 

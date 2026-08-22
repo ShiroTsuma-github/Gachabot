@@ -213,7 +213,7 @@ public sealed class GuildDestinationStore(
                 ChannelId = checked((long)channelId),
                 ChannelName = channelName.Trim(),
                 ConfiguredByUserId = checked((long)configuredByUserId),
-                IsEnabled = true,
+                IsEnabled = false,
                 EnabledGameMask = gameMask,
                 TopicSubscriptionsInitialized = true,
                 UpdatedAtUtc = now,
@@ -229,7 +229,6 @@ public sealed class GuildDestinationStore(
             destination.ChannelId = checked((long)channelId);
             destination.ChannelName = channelName.Trim();
             destination.ConfiguredByUserId = checked((long)configuredByUserId);
-            destination.IsEnabled = true;
             destination.EnabledGameMask = gameMask;
             destination.TopicSubscriptionsInitialized = true;
             destination.RemovedAtUtc = null;
