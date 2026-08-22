@@ -1,3 +1,4 @@
+using GachaBot.Domain.Content;
 using GachaBot.Application.Publishing;
 using GachaBot.Domain.Games;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,8 @@ public sealed class GuildDestinationRecord
 
     public int EnabledGameMask { get; set; }
 
+    public bool TopicSubscriptionsInitialized { get; set; }
+
     public double EventStartOffsetHours { get; set; }
 
     public double EventEndOffsetHours { get; set; } = 48;
@@ -35,10 +38,21 @@ public sealed class GuildDestinationRecord
     public DateTimeOffset UpdatedAtUtc { get; set; }
 }
 
+public sealed class GuildTopicSubscriptionRecord
+{
+    public long GuildId { get; set; }
+
+    public GameKey Game { get; set; }
+
+    public ContentKind Kind { get; set; }
+}
+
 public sealed class GuildConfigurationDbContext(DbContextOptions<GuildConfigurationDbContext> options)
     : DbContext(options)
 {
     public DbSet<GuildDestinationRecord> GuildDestinations => Set<GuildDestinationRecord>();
+
+    public DbSet<GuildTopicSubscriptionRecord> GuildTopicSubscriptions => Set<GuildTopicSubscriptionRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,9 +65,16 @@ public sealed class GuildConfigurationDbContext(DbContextOptions<GuildConfigurat
             entity.Property(destination => destination.ChannelName).HasMaxLength(128);
             entity.Property(destination => destination.EnabledGameMask)
                 .HasDefaultValue(GuildDestinationGameSelection.AllGamesMask);
+            entity.Property(destination => destination.TopicSubscriptionsInitialized).HasDefaultValue(false);
             entity.Property(destination => destination.EventStartOffsetHours).HasDefaultValue(0d);
             entity.Property(destination => destination.EventEndOffsetHours).HasDefaultValue(48d);
             entity.Property(destination => destination.RemovedAtUtc);
+        });
+        modelBuilder.Entity<GuildTopicSubscriptionRecord>(entity =>
+        {
+            entity.ToTable("GuildTopicSubscriptions");
+            entity.HasKey(subscription => new { subscription.GuildId, subscription.Game, subscription.Kind });
+            entity.HasIndex(subscription => subscription.GuildId);
         });
     }
 }
@@ -93,6 +114,9 @@ public sealed class GuildDestinationStore(
             "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"EnabledGameMask\" integer NOT NULL DEFAULT 6;",
             cancellationToken).ConfigureAwait(false);
         await context.Database.ExecuteSqlRawAsync(
+            "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"TopicSubscriptionsInitialized\" boolean NOT NULL DEFAULT FALSE;",
+            cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync(
             "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"GuildName\" character varying(128) NOT NULL DEFAULT '';",
             cancellationToken).ConfigureAwait(false);
         await context.Database.ExecuteSqlRawAsync(
@@ -107,6 +131,31 @@ public sealed class GuildDestinationStore(
         await context.Database.ExecuteSqlRawAsync(
             "ALTER TABLE \"GuildDestinations\" ADD COLUMN IF NOT EXISTS \"RemovedAtUtc\" timestamp with time zone NULL;",
             cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "GuildTopicSubscriptions" (
+                "GuildId" bigint NOT NULL,
+                "Game" integer NOT NULL,
+                "Kind" integer NOT NULL,
+                CONSTRAINT "PK_GuildTopicSubscriptions" PRIMARY KEY ("GuildId", "Game", "Kind")
+            );
+            """,
+            cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync(
+            """
+            INSERT INTO "GuildTopicSubscriptions" ("GuildId", "Game", "Kind")
+            SELECT destinations."GuildId", games."Game", kinds."Kind"
+            FROM "GuildDestinations" AS destinations
+            CROSS JOIN (VALUES (1), (2)) AS games("Game")
+            CROSS JOIN (VALUES (1), (2), (3), (4), (5), (6), (7)) AS kinds("Kind")
+            WHERE NOT destinations."TopicSubscriptionsInitialized"
+              AND (destinations."EnabledGameMask" & (1 << games."Game")) <> 0
+            ON CONFLICT DO NOTHING;
+            """,
+            cancellationToken).ConfigureAwait(false);
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE \"GuildDestinations\" SET \"TopicSubscriptionsInitialized\" = TRUE WHERE NOT \"TopicSubscriptionsInitialized\";",
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<IReadOnlyList<GuildDestination>> ListAsync(CancellationToken cancellationToken)
@@ -115,7 +164,9 @@ public sealed class GuildDestinationStore(
         var destinations = await context.GuildDestinations.AsNoTracking()
             .OrderBy(destination => destination.GuildId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return destinations.Select(ToContract).ToArray();
+        var subscriptions = await context.GuildTopicSubscriptions.AsNoTracking()
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return ToContracts(destinations, subscriptions);
     }
 
     public async Task<IReadOnlyList<GuildDestination>> ListActiveAsync(CancellationToken cancellationToken)
@@ -125,7 +176,11 @@ public sealed class GuildDestinationStore(
             .Where(destination => destination.IsEnabled)
             .OrderBy(destination => destination.GuildId)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return destinations.Select(ToContract).ToArray();
+        var guildIds = destinations.Select(destination => destination.GuildId).ToArray();
+        var subscriptions = await context.GuildTopicSubscriptions.AsNoTracking()
+            .Where(subscription => guildIds.Contains(subscription.GuildId))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return ToContracts(destinations, subscriptions);
     }
 
     public async Task ConfigureAsync(
@@ -151,7 +206,7 @@ public sealed class GuildDestinationStore(
         var now = timeProvider.GetUtcNow();
         if (destination is null)
         {
-            context.GuildDestinations.Add(new GuildDestinationRecord
+            destination = new GuildDestinationRecord
             {
                 GuildId = persistedGuildId,
                 GuildName = guildName.Trim(),
@@ -160,19 +215,33 @@ public sealed class GuildDestinationStore(
                 ConfiguredByUserId = checked((long)configuredByUserId),
                 IsEnabled = true,
                 EnabledGameMask = gameMask,
+                TopicSubscriptionsInitialized = true,
                 UpdatedAtUtc = now,
-            });
+            };
+            context.GuildDestinations.Add(destination);
+            AddTopicSubscriptions(context, destination.GuildId, games);
         }
         else
         {
+            var previouslyEnabledGames = FromMask(destination.EnabledGameMask);
+            var needsTopicInitialization = !destination.TopicSubscriptionsInitialized;
             destination.GuildName = guildName.Trim();
             destination.ChannelId = checked((long)channelId);
             destination.ChannelName = channelName.Trim();
             destination.ConfiguredByUserId = checked((long)configuredByUserId);
             destination.IsEnabled = true;
             destination.EnabledGameMask = gameMask;
+            destination.TopicSubscriptionsInitialized = true;
             destination.RemovedAtUtc = null;
             destination.UpdatedAtUtc = now;
+            var existingSubscriptions = await context.GuildTopicSubscriptions
+                .Where(subscription => subscription.GuildId == persistedGuildId)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            context.GuildTopicSubscriptions.RemoveRange(existingSubscriptions.Where(subscription => !games.Contains(subscription.Game)));
+            AddTopicSubscriptions(
+                context,
+                persistedGuildId,
+                games.Where(game => needsTopicInitialization || !previouslyEnabledGames.Contains(game)));
         }
 
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -205,6 +274,37 @@ public sealed class GuildDestinationStore(
             ?? throw new KeyNotFoundException($"Guild '{guildId}' is not configured.");
         destination.EventStartOffsetHours = startOffsetHours;
         destination.EventEndOffsetHours = endOffsetHours;
+        destination.UpdatedAtUtc = timeProvider.GetUtcNow();
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task SetTopicSubscriptionsAsync(
+        ulong guildId,
+        GameKey game,
+        IReadOnlySet<ContentKind> kinds,
+        CancellationToken cancellationToken)
+    {
+        ValidateSnowflake(guildId, nameof(guildId));
+        ArgumentNullException.ThrowIfNull(kinds);
+        if (!Enum.IsDefined(game) || kinds.Any(kind => !Enum.IsDefined(kind)))
+        {
+            throw new ArgumentOutOfRangeException(nameof(game), "Unknown game or content subject.");
+        }
+
+        await using var context = databaseFactory.CreateDbContext();
+        var destination = await context.GuildDestinations.SingleOrDefaultAsync(
+            item => item.GuildId == checked((long)guildId), cancellationToken).ConfigureAwait(false)
+            ?? throw new KeyNotFoundException($"Guild '{guildId}' is not configured.");
+        if (!FromMask(destination.EnabledGameMask).Contains(game))
+        {
+            throw new InvalidOperationException("Enable this game before choosing its subjects.");
+        }
+
+        var existing = await context.GuildTopicSubscriptions
+            .Where(subscription => subscription.GuildId == destination.GuildId && subscription.Game == game)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        context.GuildTopicSubscriptions.RemoveRange(existing);
+        AddTopicSubscriptions(context, destination.GuildId, [game], kinds);
         destination.UpdatedAtUtc = timeProvider.GetUtcNow();
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
@@ -251,7 +351,7 @@ public sealed class GuildDestinationStore(
             .Where(destination => destination.RemovedAtUtc != null && destination.RemovedAtUtc <= cutoffUtc)
             .OrderBy(destination => destination.RemovedAtUtc)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        return destinations.Select(ToContract).ToArray();
+        return ToContracts(destinations, []);
     }
 
     public async Task<bool> DeleteRemovedAsync(
@@ -285,7 +385,17 @@ public sealed class GuildDestinationStore(
             .ConfigureAwait(false);
     }
 
-    private static GuildDestination ToContract(GuildDestinationRecord destination) => new(
+    private static GuildDestination[] ToContracts(
+        IReadOnlyList<GuildDestinationRecord> destinations,
+        IReadOnlyList<GuildTopicSubscriptionRecord> subscriptions)
+    {
+        var byGuild = subscriptions.ToLookup(subscription => subscription.GuildId);
+        return destinations.Select(destination => ToContract(destination, byGuild[destination.GuildId])).ToArray();
+    }
+
+    private static GuildDestination ToContract(
+        GuildDestinationRecord destination,
+        IEnumerable<GuildTopicSubscriptionRecord> subscriptions) => new(
         checked((ulong)destination.GuildId),
         checked((ulong)destination.ChannelId),
         checked((ulong)destination.ConfiguredByUserId),
@@ -296,7 +406,19 @@ public sealed class GuildDestinationStore(
         destination.ChannelName,
         destination.EventStartOffsetHours,
         destination.EventEndOffsetHours,
-        destination.RemovedAtUtc);
+        destination.RemovedAtUtc,
+        subscriptions.Select(subscription => new GuildTopicSubscription(subscription.Game, subscription.Kind)).ToHashSet());
+
+    private static void AddTopicSubscriptions(
+        GuildConfigurationDbContext context,
+        long guildId,
+        IEnumerable<GameKey> games,
+        IEnumerable<ContentKind>? kinds = null)
+    {
+        var selectedKinds = kinds ?? Enum.GetValues<ContentKind>();
+        context.GuildTopicSubscriptions.AddRange(games.SelectMany(game => selectedKinds
+            .Select(kind => new GuildTopicSubscriptionRecord { GuildId = guildId, Game = game, Kind = kind })));
+    }
 
     private static int ToMask(IReadOnlySet<GameKey> games)
     {
@@ -386,6 +508,13 @@ public sealed class LegacyGuildDestinationStore : IGuildDestinationStore
         ulong guildId,
         double startOffsetHours,
         double endOffsetHours,
+        CancellationToken cancellationToken) =>
+        throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
+
+    public Task SetTopicSubscriptionsAsync(
+        ulong guildId,
+        GameKey game,
+        IReadOnlySet<ContentKind> kinds,
         CancellationToken cancellationToken) =>
         throw new NotSupportedException("The legacy destination store is for compatibility tests only.");
 

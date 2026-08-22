@@ -1,3 +1,4 @@
+using GachaBot.Domain.Content;
 using GachaBot.Domain.Games;
 
 namespace GachaBot.Application.Publishing;
@@ -13,7 +14,23 @@ public sealed record GuildDestination(
     string? ChannelName = null,
     double EventStartOffsetHours = 0,
     double EventEndOffsetHours = 48,
-    DateTimeOffset? RemovedAtUtc = null);
+    DateTimeOffset? RemovedAtUtc = null,
+    IReadOnlySet<GuildTopicSubscription>? TopicSubscriptions = null);
+
+public sealed record GuildTopicSubscription(GameKey Game, ContentKind Kind);
+
+public static class GuildDestinationTopics
+{
+    public static IReadOnlySet<GuildTopicSubscription> AllFor(IEnumerable<GameKey> games) =>
+        games.SelectMany(game => Enum.GetValues<ContentKind>()
+            .Select(kind => new GuildTopicSubscription(game, kind)))
+            .ToHashSet();
+
+    public static bool SubscribesTo(this GuildDestination destination, GameKey game, ContentKind kind) =>
+        destination.Games.Contains(game) &&
+        (destination.TopicSubscriptions is null ||
+         destination.TopicSubscriptions.Contains(new GuildTopicSubscription(game, kind)));
+}
 
 public static class GuildDestinationGames
 {
@@ -47,6 +64,12 @@ public interface IGuildDestinationStore
         ulong guildId,
         double startOffsetHours,
         double endOffsetHours,
+        CancellationToken cancellationToken);
+
+    Task SetTopicSubscriptionsAsync(
+        ulong guildId,
+        GameKey game,
+        IReadOnlySet<ContentKind> kinds,
         CancellationToken cancellationToken);
 
     Task MarkRemovedAsync(ulong guildId, CancellationToken cancellationToken);

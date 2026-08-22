@@ -107,6 +107,45 @@ public sealed class ContentStoreTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task UpsertAsync_AutoPublishSkipsGuildsThatDidNotSelectTheContentSubject()
+    {
+        var destinations = new FixedDestinationStore(
+        [
+            new GuildDestination(
+                101,
+                201,
+                301,
+                true,
+                new HashSet<GameKey> { GameKey.WutheringWaves },
+                DateTimeOffset.UtcNow,
+                TopicSubscriptions: new HashSet<GuildTopicSubscription>
+                {
+                    new(GameKey.WutheringWaves, ContentKind.Event),
+                }),
+            new GuildDestination(
+                102,
+                202,
+                302,
+                true,
+                new HashSet<GameKey> { GameKey.WutheringWaves },
+                DateTimeOffset.UtcNow,
+                TopicSubscriptions: new HashSet<GuildTopicSubscription>
+                {
+                    new(GameKey.WutheringWaves, ContentKind.News),
+                }),
+        ]);
+        var store = new ContentStore(_db, TimeProvider.System, destinations);
+
+        await store.UpsertAsync(
+            Snapshot("News only"),
+            PublicationDisposition.AutoPublish,
+            TestContext.Current.CancellationToken);
+
+        var publication = await _db.Publications.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(102, publication.DestinationGuildId);
+    }
+
+    [Fact]
     public async Task UpsertAsync_ScheduleUpcomingQueuesFutureEventAtItsStart()
     {
         var startAtUtc = DateTimeOffset.UtcNow.AddHours(6);
@@ -424,6 +463,13 @@ public sealed class ContentStoreTests : IAsyncLifetime
             ulong guildId,
             double startOffsetHours,
             double endOffsetHours,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task SetTopicSubscriptionsAsync(
+            ulong guildId,
+            GameKey game,
+            IReadOnlySet<ContentKind> kinds,
             CancellationToken cancellationToken) =>
             Task.CompletedTask;
 

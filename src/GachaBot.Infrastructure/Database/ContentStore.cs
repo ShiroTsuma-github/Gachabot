@@ -778,9 +778,9 @@ public sealed class ContentStore(
         var destinationStore = guildDestinations
             ?? throw new InvalidOperationException("Guild configuration is unavailable.");
         var destination = (await destinationStore.ListActiveAsync(cancellationToken).ConfigureAwait(false))
-            .SingleOrDefault(item => item.GuildId == guildId && item.Games.Contains(content.Game))
+            .SingleOrDefault(item => item.GuildId == guildId && item.SubscribesTo(content.Game, content.Kind))
             ?? throw new InvalidOperationException(
-                "The selected guild is not active or does not subscribe to this content's game.");
+                "The selected guild is not active or does not subscribe to this content's game and subject.");
         var now = timeProvider.GetUtcNow();
         var hasPendingPublication = await dbContext.Publications.AnyAsync(
             publication =>
@@ -912,7 +912,7 @@ public sealed class ContentStore(
                     now),
             }
             : await guildDestinations.ListActiveAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var destination in destinations.Where(destination => destination.Games.Contains(content.Game)))
+        foreach (var destination in destinations.Where(destination => destination.SubscribesTo(content.Game, content.Kind)))
         {
             AddPublication(content, destination, dueAtUtc, now);
         }
@@ -944,7 +944,7 @@ public sealed class ContentStore(
             }
             : await guildDestinations.ListActiveAsync(cancellationToken).ConfigureAwait(false);
         var added = false;
-        foreach (var destination in destinations.Where(destination => destination.Games.Contains(content.Game)))
+        foreach (var destination in destinations.Where(destination => destination.SubscribesTo(content.Game, content.Kind)))
         {
             var exists = await dbContext.Publications.AnyAsync(
                 publication =>
@@ -1011,11 +1011,14 @@ public sealed class ContentStore(
                 content.ExpiresAtUtc != null &&
                 content.ExpiresAtUtc > now)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
-        foreach (var content in events.Where(content => destination.Games.Contains(content.Game)))
+        foreach (var content in events)
         {
             await CancelPendingEventPublicationsAsync(content.Id, destination, now, cancellationToken)
                 .ConfigureAwait(false);
-            await AddEventPublicationsAsync(content, [destination], cancellationToken).ConfigureAwait(false);
+            if (destination.SubscribesTo(content.Game, content.Kind))
+            {
+                await AddEventPublicationsAsync(content, [destination], cancellationToken).ConfigureAwait(false);
+            }
         }
 
         if (dbContext.ChangeTracker.HasChanges())
@@ -1045,7 +1048,7 @@ public sealed class ContentStore(
         var now = timeProvider.GetUtcNow();
         var added = false;
         DateTimeOffset? earliestDueAtUtc = null;
-        foreach (var destination in destinations.Where(destination => destination.Games.Contains(content.Game)))
+        foreach (var destination in destinations.Where(destination => destination.SubscribesTo(content.Game, content.Kind)))
         {
             var startDueAtUtc = Max(now, startsAtUtc.AddHours(-destination.EventStartOffsetHours));
             var endDueAtUtc = Max(now, endsAtUtc.AddHours(-destination.EventEndOffsetHours));

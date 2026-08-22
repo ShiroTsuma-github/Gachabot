@@ -41,14 +41,14 @@ public sealed class PublicationQueueStore(
                 : activeDestinations.SingleOrDefault(item =>
                     item.GuildId == checked((ulong)publication.DestinationGuildId.Value) &&
                     item.ChannelId == checked((ulong)publication.DestinationChannelId.Value) &&
-                    item.Games.Contains(publication.Content.Game));
+                    item.SubscribesTo(publication.Content.Game, publication.Content.Kind));
             if (destination is not null)
             {
                 break;
             }
 
             publication.State = PublicationState.Cancelled;
-            publication.LastError = "Cancelled because this guild no longer accepts this game or channel.";
+            publication.LastError = "Cancelled because this guild no longer accepts this game, subject, or channel.";
             publication.UpdatedAtUtc = nowUtc;
             await dbContext.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         }

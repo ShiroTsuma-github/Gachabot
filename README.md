@@ -81,10 +81,14 @@ Run these slash commands in each guild. They are intentionally restricted to mem
 ```text
 /gachabot-configure channel:#updates wuthering-waves:true neverness-to-everness:true
 /gachabot-event-schedule start-before-hours:0 end-before-hours:48
+/gachabot-subjects game:Wuthering Waves
+/gachabot-subjects game:Neverness to Everness
 /gachabot-status
 ```
 
 `start-before-hours` and `end-before-hours` accept values from `0` to `72`, including fractions such as `0.5`. The defaults publish an event at its start and send an end reminder 48 hours before it finishes. Use `/gachabot-disable` to pause a guild or `/gachabot-enable` to resume it.
+
+`/gachabot-subjects` opens a private interactive selector for one game. Toggle the subjects you want (events, codes, news, updates, maintenance, characters, and announcements), then press **Save subjects**. Subject choices are stored separately for each game and affect both future posts and pending event reminders.
 
 When a guild is newly configured or re-enabled, currently active events that have not already been published for that guild are queued. Each guild has separate delivery and retry state, so a failure on one server cannot block another.
 

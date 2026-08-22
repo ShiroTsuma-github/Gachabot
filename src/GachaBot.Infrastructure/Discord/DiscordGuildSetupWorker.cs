@@ -1,6 +1,7 @@
 using Discord;
 using Discord.WebSocket;
 using GachaBot.Application.Publishing;
+using GachaBot.Domain.Content;
 using GachaBot.Domain.Games;
 using GachaBot.Infrastructure.Publishing;
 using Microsoft.Extensions.Hosting;
@@ -22,10 +23,13 @@ public sealed partial class DiscordGuildSetupWorker(
     private const string DisableCommand = "gachabot-disable";
     private const string StatusCommand = "gachabot-status";
     private const string EventScheduleCommand = "gachabot-event-schedule";
+    private const string SubjectsCommand = "gachabot-subjects";
     private const string WutheringWavesOption = "wuthering-waves";
     private const string NevernessToEvernessOption = "neverness-to-everness";
     private const string StartBeforeHoursOption = "start-before-hours";
     private const string EndBeforeHoursOption = "end-before-hours";
+    private const string SubjectGameOption = "game";
+    private const string SubjectComponentPrefix = "gachabot-subjects";
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -37,6 +41,7 @@ public sealed partial class DiscordGuildSetupWorker(
         client.LeftGuild += HandleLeftGuildAsync;
         client.GuildAvailable += HandleGuildAvailableAsync;
         client.SlashCommandExecuted += HandleSlashCommandAsync;
+        client.ButtonExecuted += HandleSubjectButtonAsync;
         client.Log += message =>
         {
             if (logger.IsEnabled(LogLevel.Debug))
@@ -101,7 +106,19 @@ public sealed partial class DiscordGuildSetupWorker(
                 .AddOption(EndBeforeHoursOption, ApplicationCommandOptionType.Number,
                     "Hours before event end; 0 means exactly at end", isRequired: true)
                 .Build();
-            await client.BulkOverwriteGlobalApplicationCommandsAsync([configure, enable, disable, status, eventSchedule])
+            var subjects = new SlashCommandBuilder()
+                .WithName(SubjectsCommand)
+                .WithDescription("Choose which subjects this server receives for one game")
+                .WithDefaultMemberPermissions(GuildPermission.ManageGuild)
+                .AddOption(new SlashCommandOptionBuilder()
+                    .WithName(SubjectGameOption)
+                    .WithDescription("Game to configure")
+                    .WithType(ApplicationCommandOptionType.String)
+                    .WithRequired(true)
+                    .AddChoice("Wuthering Waves", "wuthering-waves")
+                    .AddChoice("Neverness to Everness", "neverness-to-everness"))
+                .Build();
+            await client.BulkOverwriteGlobalApplicationCommandsAsync([configure, enable, disable, status, eventSchedule, subjects])
                 .ConfigureAwait(false);
             LogCommandsRegistered(logger);
         }
@@ -176,6 +193,9 @@ public sealed partial class DiscordGuildSetupWorker(
                     break;
                 case EventScheduleCommand:
                     await ConfigureEventScheduleAsync(command).ConfigureAwait(false);
+                    break;
+                case SubjectsCommand:
+                    await ConfigureSubjectsAsync(command).ConfigureAwait(false);
                     break;
             }
         }
@@ -286,7 +306,9 @@ public sealed partial class DiscordGuildSetupWorker(
               $"**Games:** {FormatGames(destination.Games)}\n" +
               $"**Status:** {(destination.IsEnabled ? "enabled" : "paused")}\n" +
               $"**Event start post:** {FormatStartOffset(destination.EventStartOffsetHours)}\n" +
-              $"**Ending reminder:** {FormatEndOffset(destination.EventEndOffsetHours)}";
+              $"**Ending reminder:** {FormatEndOffset(destination.EventEndOffsetHours)}\n" +
+              $"**Subjects:**\n{FormatSubjects(destination)}\n" +
+              $"Use `/{SubjectsCommand}` to change subjects for a game.";
         await command.RespondAsync(response, ephemeral: true).ConfigureAwait(false);
     }
 
@@ -326,6 +348,258 @@ public sealed partial class DiscordGuildSetupWorker(
             "Pending event posts were recalculated.",
             ephemeral: true).ConfigureAwait(false);
     }
+
+    private async Task ConfigureSubjectsAsync(SocketSlashCommand command)
+    {
+        var guildId = command.GuildId ?? throw new InvalidOperationException("Subjects require a server.");
+        var destination = (await destinations.ListAsync(CancellationToken.None).ConfigureAwait(false))
+            .SingleOrDefault(item => item.GuildId == guildId);
+        if (destination is null)
+        {
+            await command.RespondAsync(
+                $"This server is not configured. Use `/{ConfigureCommand}` and choose a text channel first.",
+                ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        var game = ReadSubjectGame(command);
+        if (!destination.Games.Contains(game))
+        {
+            await command.RespondAsync(
+                $"**{GameLabel(game)}** is not enabled for this server. Use `/{ConfigureCommand}` first.",
+                ephemeral: true).ConfigureAwait(false);
+            return;
+        }
+
+        var selectedKinds = destination.TopicSubscriptions?
+            .Where(subscription => subscription.Game == game)
+            .Select(subscription => subscription.Kind)
+            .ToHashSet() ?? Enum.GetValues<ContentKind>().ToHashSet();
+        await command.RespondAsync(
+            embed: BuildSubjectsEmbed(game, selectedKinds),
+            components: BuildSubjectComponents(guildId, command.User.Id, game, selectedKinds),
+            ephemeral: true).ConfigureAwait(false);
+    }
+
+    private async Task HandleSubjectButtonAsync(SocketMessageComponent component)
+    {
+        if (!TryReadSubjectComponent(component.Data.CustomId, out var guildId, out var userId, out var game, out var kinds, out var action))
+        {
+            return;
+        }
+
+        if (component.GuildId != guildId || component.User.Id != userId)
+        {
+            await component.RespondAsync("These subject controls belong to another configuration session.", ephemeral: true)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (action == "cancel")
+        {
+            await component.UpdateAsync(message =>
+            {
+                message.Embed = new EmbedBuilder()
+                    .WithColor(Color.DarkGrey)
+                    .WithDescription("Subject changes were discarded.")
+                    .Build();
+                message.Components = new ComponentBuilder().Build();
+            }).ConfigureAwait(false);
+            return;
+        }
+
+        if (action == "save")
+        {
+            if (kinds.Count == 0)
+            {
+                await component.RespondAsync("Choose at least one subject, or disable the game in `/{ConfigureCommand}`.", ephemeral: true)
+                    .ConfigureAwait(false);
+                return;
+            }
+
+            await destinations.SetTopicSubscriptionsAsync(guildId, game, kinds, CancellationToken.None).ConfigureAwait(false);
+            await ReconcileEventPublicationsAsync(guildId).ConfigureAwait(false);
+            await component.UpdateAsync(message =>
+            {
+                message.Embed = new EmbedBuilder()
+                    .WithColor(Color.Green)
+                    .WithTitle($"Subjects saved · {GameLabel(game)}")
+                    .WithDescription($"This server will receive: **{FormatKinds(kinds)}**.")
+                    .Build();
+                message.Components = new ComponentBuilder().Build();
+            }).ConfigureAwait(false);
+            return;
+        }
+
+        if (!TryParseKind(action, out var kind))
+        {
+            return;
+        }
+
+        if (!kinds.Add(kind))
+        {
+            kinds.Remove(kind);
+        }
+
+        await component.UpdateAsync(message =>
+        {
+            message.Embed = BuildSubjectsEmbed(game, kinds);
+            message.Components = BuildSubjectComponents(guildId, userId, game, kinds);
+        }).ConfigureAwait(false);
+    }
+
+    private static Embed BuildSubjectsEmbed(GameKey game, IReadOnlySet<ContentKind> selectedKinds) => new EmbedBuilder()
+        .WithColor(Color.Gold)
+        .WithTitle($"Subjects · {GameLabel(game)}")
+        .WithDescription("Choose the subjects this server should receive. Press **Save subjects** when you are done.")
+        .AddField("Selected", FormatKinds(selectedKinds), inline: false)
+        .Build();
+
+    private static MessageComponent BuildSubjectComponents(
+        ulong guildId,
+        ulong userId,
+        GameKey game,
+        HashSet<ContentKind> selectedKinds)
+    {
+        var builder = new ComponentBuilder();
+        var kinds = Enum.GetValues<ContentKind>();
+        foreach (var (kind, index) in kinds.Select((kind, index) => (kind, index)))
+        {
+            var isSelected = selectedKinds.Contains(kind);
+            builder.WithButton(new ButtonBuilder()
+                .WithLabel($"{(isSelected ? "☑" : "☐")} {KindLabel(kind)}")
+                .WithCustomId(BuildSubjectComponentId(guildId, userId, game, selectedKinds, KindToken(kind)))
+                .WithStyle(isSelected ? ButtonStyle.Success : ButtonStyle.Secondary), index / 4);
+        }
+
+        builder.WithButton(new ButtonBuilder()
+            .WithLabel("Save subjects")
+            .WithCustomId(BuildSubjectComponentId(guildId, userId, game, selectedKinds, "save"))
+            .WithStyle(ButtonStyle.Primary), 2);
+        builder.WithButton(new ButtonBuilder()
+            .WithLabel("Cancel")
+            .WithCustomId(BuildSubjectComponentId(guildId, userId, game, selectedKinds, "cancel"))
+            .WithStyle(ButtonStyle.Secondary), 2);
+        return builder.Build();
+    }
+
+    private static string BuildSubjectComponentId(
+        ulong guildId,
+        ulong userId,
+        GameKey game,
+        IReadOnlySet<ContentKind> kinds,
+        string action) =>
+        $"{SubjectComponentPrefix}:{guildId}:{userId}:{(int)game}:{ToKindMask(kinds)}:{action}";
+
+    private static bool TryReadSubjectComponent(
+        string customId,
+        out ulong guildId,
+        out ulong userId,
+        out GameKey game,
+        out HashSet<ContentKind> kinds,
+        out string action)
+    {
+        guildId = 0;
+        userId = 0;
+        game = default;
+        kinds = [];
+        action = string.Empty;
+        var segments = customId.Split(':');
+        if (segments.Length != 6 || segments[0] != SubjectComponentPrefix ||
+            !ulong.TryParse(segments[1], out guildId) ||
+            !ulong.TryParse(segments[2], out userId) ||
+            !int.TryParse(segments[3], out var gameValue) ||
+            !int.TryParse(segments[4], out var kindMask) ||
+            !Enum.IsDefined((GameKey)gameValue))
+        {
+            return false;
+        }
+
+        game = (GameKey)gameValue;
+        kinds = FromKindMask(kindMask);
+        action = segments[5];
+        return action is "save" or "cancel" || TryParseKind(action, out _);
+    }
+
+    private static GameKey ReadSubjectGame(SocketSlashCommand command)
+    {
+        var raw = command.Data.Options.Single(option => option.Name == SubjectGameOption).Value?.ToString();
+        return raw switch
+        {
+            "wuthering-waves" => GameKey.WutheringWaves,
+            "neverness-to-everness" => GameKey.NevernessToEverness,
+            _ => throw new ArgumentException("Choose one of the supported games."),
+        };
+    }
+
+    private static int ToKindMask(IEnumerable<ContentKind> kinds) =>
+        kinds.Aggregate(0, (mask, kind) => mask | (1 << (int)kind));
+
+    private static HashSet<ContentKind> FromKindMask(int mask) => Enum.GetValues<ContentKind>()
+        .Where(kind => (mask & (1 << (int)kind)) != 0)
+        .ToHashSet();
+
+    private static bool TryParseKind(string token, out ContentKind kind) => token switch
+    {
+        "news" => AssignKind(ContentKind.News, out kind),
+        "update" => AssignKind(ContentKind.Update, out kind),
+        "event" => AssignKind(ContentKind.Event, out kind),
+        "codes" => AssignKind(ContentKind.RedeemCode, out kind),
+        "maintenance" => AssignKind(ContentKind.Maintenance, out kind),
+        "character" => AssignKind(ContentKind.Character, out kind),
+        "announcement" => AssignKind(ContentKind.Announcement, out kind),
+        _ => AssignKind(default, out kind, false),
+    };
+
+    private static bool AssignKind(ContentKind value, out ContentKind kind, bool valid = true)
+    {
+        kind = value;
+        return valid;
+    }
+
+    private static string KindToken(ContentKind kind) => kind switch
+    {
+        ContentKind.News => "news",
+        ContentKind.Update => "update",
+        ContentKind.Event => "event",
+        ContentKind.RedeemCode => "codes",
+        ContentKind.Maintenance => "maintenance",
+        ContentKind.Character => "character",
+        ContentKind.Announcement => "announcement",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
+
+    private static string KindLabel(ContentKind kind) => kind switch
+    {
+        ContentKind.News => "News",
+        ContentKind.Update => "Updates",
+        ContentKind.Event => "Events",
+        ContentKind.RedeemCode => "Codes",
+        ContentKind.Maintenance => "Maintenance",
+        ContentKind.Character => "Characters",
+        ContentKind.Announcement => "Announcements",
+        _ => kind.ToString(),
+    };
+
+    private static string GameLabel(GameKey game) => game switch
+    {
+        GameKey.WutheringWaves => "Wuthering Waves",
+        GameKey.NevernessToEverness => "Neverness to Everness",
+        _ => game.ToString(),
+    };
+
+    private static string FormatKinds(IEnumerable<ContentKind> kinds)
+    {
+        var labels = kinds.OrderBy(kind => kind).Select(KindLabel).ToArray();
+        return labels.Length == 0 ? "none" : string.Join(", ", labels);
+    }
+
+    private static string FormatSubjects(GuildDestination destination) => string.Join(
+        "\n",
+        destination.Games.OrderBy(game => game)
+            .Select(game => $"• **{GameLabel(game)}:** {FormatKinds(destination.TopicSubscriptions?
+                .Where(subscription => subscription.Game == game)
+                .Select(subscription => subscription.Kind) ?? Enum.GetValues<ContentKind>())}"));
 
     private static HashSet<GameKey>? ReadGames(SocketSlashCommand command)
     {
