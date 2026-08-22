@@ -86,7 +86,7 @@ public sealed class PlaywrightRenderedPageClient(
                 Headless = _options.Headless,
                 Locale = _options.Locale,
                 TimezoneId = _options.TimezoneId,
-                ChromiumSandbox = true,
+                ChromiumSandbox = _options.ChromiumSandbox,
                 Args = ["--disable-blink-features=AutomationControlled"],
             }).WaitAsync(cancellationToken).ConfigureAwait(false);
         await _context.AddInitScriptAsync(HideWebDriverScript)

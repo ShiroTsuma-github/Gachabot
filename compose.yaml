@@ -10,9 +10,26 @@ services:
       - path: .env
         required: false
     ports:
-      - "8791:8791"
+      - "127.0.0.1:8791:8791"
+    environment:
+      BrowserAutomation__ChromiumSandbox: ${BrowserAutomation__ChromiumSandbox:-false}
     volumes:
       - gachabot-data:/app/data
 
+  proxy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - gachabot
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
 volumes:
   gachabot-data:
+  caddy-data:
+  caddy-config:

@@ -25,7 +25,7 @@ To run from source instead, install .NET SDK 10.0.302 (or a compatible 10.0.x SD
 
 ## Start with Docker Compose
 
-The compose file starts Signal Desk only. PostgreSQL and S3 storage are deliberately external services, so provide their addresses in `.env`.
+The compose file starts Signal Desk and a Caddy HTTPS reverse proxy. PostgreSQL and S3 storage are deliberately external services, so provide their addresses in `.env`.
 
 ```powershell
 Copy-Item .env.example .env
@@ -34,7 +34,16 @@ docker compose up --build -d
 docker compose logs -f gachabot
 ```
 
-The dashboard is then available on `http://localhost:8791` and the health endpoint on `http://localhost:8791/health`.
+For the default LAN host, open `https://dockers.lan`. Caddy redirects HTTP to HTTPS; the app's port `8791` is bound to the server's loopback interface only. The local health endpoint remains `http://localhost:8791/health` on the server.
+
+`Caddyfile` uses Caddy's internal CA for `dockers.lan`. Trust its public root certificate once on every device that opens the dashboard:
+
+```powershell
+docker compose cp proxy:/data/caddy/pki/authorities/local/root.crt .\caddy-local-root.crt
+Import-Certificate -FilePath .\caddy-local-root.crt -CertStoreLocation Cert:\CurrentUser\Root
+```
+
+For a public deployment, replace `dockers.lan` in `Caddyfile` with a real DNS name pointing to the server and keep ports 80 and 443 reachable. Caddy will obtain and renew the certificate automatically.
 
 Keep the named `gachabot-data` volume: it contains ASP.NET data-protection keys and the browser profile. Back it up together with PostgreSQL and the S3 bucket.
 
@@ -56,7 +65,7 @@ Use a dedicated database user and a dedicated S3 access key restricted to this b
 
 1. In the [Discord Developer Portal](https://discord.com/developers/applications), create an application and add a bot.
 2. Copy its bot token to `Discord__BotToken` and keep `Discord__Enabled=true`.
-3. In **OAuth2**, add the redirect URL `https://your-domain/signin-discord`. For a localhost-only setup, also add `http://localhost:8791/signin-discord`.
+3. In **OAuth2**, add the exact redirect URL served by Caddy: `https://dockers.lan/signin-discord` for the default LAN setup, or `https://your-domain/signin-discord` after changing `Caddyfile`. Do not use the internal port `8791` as a production OAuth callback.
 4. Copy the OAuth client ID and client secret into `.env`.
 5. Generate an install URL with the `bot` and `applications.commands` scopes, then add the bot to your test guild.
 6. Give the bot permissions to view the target channel, send messages, embed links, attach files, and read message history. The person running setup needs Discord's **Manage Server** permission; the bot itself does not need it.
@@ -107,6 +116,8 @@ The development profile allows anonymous dashboard access by default and disable
 ```powershell
 & 'src/GachaBot.Web/bin/Debug/net10.0/playwright.ps1' install chromium
 ```
+
+`BrowserAutomation__ChromiumSandbox` defaults to `true` for a local host. Docker Compose sets it to `false`, because the Playwright image otherwise cannot start Chromium on hosts that disable unprivileged user namespaces.
 
 ## License
 

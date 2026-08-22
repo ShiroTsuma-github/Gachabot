@@ -7,6 +7,7 @@ using GachaBot.Web.Components;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var mediaMigrationRequested = args.Contains("--migrate-media", StringComparer.Ordinal);
 var mediaGarbageCollectionRequested = args.Contains("--collect-media-garbage", StringComparer.Ordinal);
@@ -40,6 +41,12 @@ else
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 builder.Services.AddGachaBotInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<Microsoft.AspNetCore.Authorization.IAuthorizationHandler,
     DashboardAdministratorAuthorizationHandler>();
@@ -142,6 +149,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();

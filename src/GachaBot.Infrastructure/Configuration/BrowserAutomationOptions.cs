@@ -16,4 +16,6 @@ public sealed class BrowserAutomationOptions
 
     [Required]
     public string ProfilePath { get; set; } = "data/browser-profile";
+
+    public bool ChromiumSandbox { get; set; } = true;
 }
