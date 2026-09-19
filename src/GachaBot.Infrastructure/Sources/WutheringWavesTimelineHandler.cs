@@ -117,8 +117,8 @@ public sealed partial class WutheringWavesTimelineHandler(HttpClient httpClient)
         var externalId = $"{Slug(name)}:{startAtUtc:yyyyMMddHHmm}";
         var details = new List<KeyValueItem>
         {
-            new("Start", FormatDiscordTimestamp(startAtUtc)),
-            new("End", FormatDiscordTimestamp(endAtUtc)),
+            new("Start", DiscordTimestampFormatter.Format(startAtUtc)),
+            new("End", DiscordTimestampFormatter.Format(endAtUtc)),
         };
         var blocks = new List<ContentBlock>
         {
@@ -193,12 +193,6 @@ public sealed partial class WutheringWavesTimelineHandler(HttpClient httpClient)
         }
 
         return coverUrl;
-    }
-
-    private static string FormatDiscordTimestamp(DateTimeOffset value)
-    {
-        var unixTime = value.ToUnixTimeSeconds();
-        return $"<t:{unixTime}:F> · <t:{unixTime}:R>";
     }
 
     private static string? GetString(JsonElement entry, string propertyName) =>

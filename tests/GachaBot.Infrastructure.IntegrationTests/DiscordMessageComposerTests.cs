@@ -105,6 +105,10 @@ public sealed class DiscordMessageComposerTests
         Assert.Empty(embed.Fields);
         Assert.Contains("**Rewards:** Celebration Fireworks Avatar Frame", embed.Description, StringComparison.Ordinal);
         Assert.Contains("**Expires:** 08/18/2026", embed.Description, StringComparison.Ordinal);
+        Assert.Contains(
+            $"**Rewards:** Celebration Fireworks Avatar Frame{Environment.NewLine}**Expires:** 08/18/2026",
+            embed.Description,
+            StringComparison.Ordinal);
     }
 
     [Fact]

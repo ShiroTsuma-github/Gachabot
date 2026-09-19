@@ -15,7 +15,7 @@ Stan pobrania: 2026-08-13 (Europe/Warsaw).
 | `neverness-to-everness/article-261969.html` | `https://nte.perfectworld.com/en/article/news/gamebroad/20260428/261969.html` | pełny HTML detalu z poprawnymi obrazami CDN i technicznym duplikatem `docs.oa.wanmei.net` |
 | `neverness-to-everness/article-257051-video.html` | `https://nte.perfectworld.com/en/article/news/gamenews/20250625/257051.html` | rzeczywisty fragment detalu z produkcyjnym iframe YouTube |
 | `game8/nte-rendered-fragment.html` | `https://game8.co/games/Neverness-to-Everness/archives/593718` | fragment DOM po przejściu wyzwania JS; selektor i wartość potwierdzone w lokalnym Chrome |
-| `game8/wuwa-rendered-fragment.html` | `https://game8.co/games/Wuthering-Waves/archives/453149` | fragment DOM tabel skróconej i szczegółowej; obejmuje nagrody, datę tekstową i kod bez daty |
+| `game8/wuwa-rendered-fragment.html` | `https://game8.co/games/Wuthering-Waves/archives/453149` | fragment dynamicznego DOM: kody livestreamu, wspólny timestamp `data-date`, nagrody w liście, osobna sekcja eventowa i kod permanentny |
 
 Fixture’y nie są pobierane podczas `dotnet test`. Ich świadome odświeżenie powinno być osobnym review, ponieważ zmiana snapshotu może wymagać zmiany reguł w `source-definitions.json`.
 

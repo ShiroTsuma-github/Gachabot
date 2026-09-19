@@ -721,7 +721,7 @@ public sealed class ConfiguredSourceTests
         Assert.Contains(witchHouseDetails.Items, item =>
             item.Key == "Rewards" && item.Value.Contains("Annulith x100", StringComparison.Ordinal));
         Assert.Contains(witchHouseDetails.Items, item =>
-            item.Key == "Expires" && item.Value.Contains("20.09.2026", StringComparison.Ordinal));
+            item.Key == "Expires" && item.Value == "<t:1789948799:F> · <t:1789948799:R>");
         var permanent = Assert.Single(items, item => item.ExternalId == "aggregate:permanent");
         Assert.Equal(["NTENENE"], permanent.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
     }
@@ -743,8 +743,9 @@ public sealed class ConfiguredSourceTests
                 SectionHeadingSelector = "h2, h3",
                 SectionHeadingContains = ["Codes"],
                 SectionHeadingExcludes = ["Expired"],
-                CurrentSectionHeadingContains = ["All Active"],
+                CurrentSectionHeadingContains = ["Livestream Codes"],
                 PermanentSectionHeadingContains = ["List of All Active Redeem Codes"],
+                TrackAllNonPermanentSections = true,
                 ItemSelector = "input.a-clipboard__textInput",
                 ValueAttribute = "value",
                 RowSelector = "tr",
@@ -755,6 +756,11 @@ public sealed class ConfiguredSourceTests
                 MissingExpiryIsActive = true,
                 MissingExpiryDisplay = "No expiry announced",
                 RewardItemSelector = "td:nth-child(2) .align",
+                SectionExpirySelector = ".js-saola-timer[data-date]",
+                SectionExpiryValueAttribute = "data-date",
+                SectionExpiryUnixTimeMilliseconds = true,
+                SectionRewardItemSelector = "ul.a-list > li",
+                SectionRewardCodeSelector = "b",
                 CurrentAggregateExternalId = "aggregate:current",
                 PermanentAggregateExternalId = "aggregate:permanent",
                 PermanentTitle = "Permanent Redeem Codes",
@@ -770,7 +776,9 @@ public sealed class ConfiguredSourceTests
         var current = Assert.Single(items, item => item.ExternalId == "aggregate:current");
         var permanent = Assert.Single(items, item => item.ExternalId == "aggregate:permanent");
 
-        Assert.Equal(["F5F4D3B2A2"], current.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
+        Assert.Equal(
+            ["FALLINGSANCTUM", "FINDSENTINEL", "WAKINGMOON", "MOONCHASE"],
+            current.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
         Assert.Equal(["WUTHERINGGIFT"], permanent.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
         var details = permanent.Document.Blocks.OfType<KeyValueBlock>().ToArray();
         Assert.Contains(details, block => block.Items.Any(field =>
@@ -778,7 +786,11 @@ public sealed class ConfiguredSourceTests
         Assert.Contains(details, block => block.Items.Any(field =>
             field.Key == "Expires" && field.Value == "No expiry announced"));
         Assert.Contains(current.Document.Blocks.OfType<KeyValueBlock>(), block => block.Items.Any(field =>
-            field.Key == "Expires" && field.Value == "19.08.2026 (<t:1787184000:R>)"));
+            field.Key == "Rewards" && field.Value.Contains("Premium Resonance Potions", StringComparison.Ordinal)));
+        Assert.Equal(3, current.Document.Blocks.OfType<KeyValueBlock>().Count(block => block.Items.Any(field =>
+            field.Key == "Expires" && field.Value == "<t:1790006340:F> · <t:1790006340:R>")));
+        Assert.Contains(current.Document.Blocks.OfType<KeyValueBlock>(), block => block.Items.Any(field =>
+            field.Key == "Expires" && field.Value == "<t:1790812799:F> · <t:1790812799:R>"));
     }
 
     [Fact]
@@ -833,8 +845,9 @@ public sealed class ConfiguredSourceTests
             SectionHeadingSelector = "h2, h3",
             SectionHeadingContains = ["Codes"],
             SectionHeadingExcludes = ["Expired"],
-            CurrentSectionHeadingContains = ["All Active"],
+            CurrentSectionHeadingContains = ["Livestream Codes"],
             PermanentSectionHeadingContains = ["List of All Active Redeem Codes"],
+            TrackAllNonPermanentSections = true,
             ItemSelector = "input.a-clipboard__textInput",
             ValueAttribute = "value",
             RowSelector = "tr",
@@ -845,6 +858,11 @@ public sealed class ConfiguredSourceTests
             MissingExpiryIsActive = true,
             MissingExpiryDisplay = "No expiry announced",
             RewardItemSelector = "td:nth-child(2) .align",
+            SectionExpirySelector = ".js-saola-timer[data-date]",
+            SectionExpiryValueAttribute = "data-date",
+            SectionExpiryUnixTimeMilliseconds = true,
+            SectionRewardItemSelector = "ul.a-list > li",
+            SectionRewardCodeSelector = "b",
             CurrentAggregateExternalId = "aggregate:current",
             PermanentAggregateExternalId = "aggregate:permanent",
             PermanentTitle = "Permanent Redeem Codes",

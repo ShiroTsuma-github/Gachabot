@@ -183,8 +183,8 @@ public sealed partial class Game8EventCalendarHandler(IRenderedPageClient pageCl
 
         var details = new List<KeyValueItem>
         {
-            new("Start", FormatTimestamp(candidate.StartAtUtc)),
-            new("End", FormatTimestamp(candidate.EndAtUtc.AddTicks(-1))),
+            new("Start", DiscordTimestampFormatter.Format(candidate.StartAtUtc)),
+            new("End", DiscordTimestampFormatter.Format(candidate.EndAtUtc.AddTicks(-1))),
         };
         if (!string.IsNullOrWhiteSpace(candidate.Rewards))
         {
@@ -249,9 +249,6 @@ public sealed partial class Game8EventCalendarHandler(IRenderedPageClient pageCl
         endAtUtc = new DateTimeOffset(endDate.AddDays(1).ToDateTime(dayStart), offset).ToUniversalTime();
         return endAtUtc > startAtUtc;
     }
-
-    private static string FormatTimestamp(DateTimeOffset value) =>
-        $"<t:{value.ToUnixTimeSeconds()}:F> \u00B7 <t:{value.ToUnixTimeSeconds()}:R>";
 
     private static string Slug(string value)
     {

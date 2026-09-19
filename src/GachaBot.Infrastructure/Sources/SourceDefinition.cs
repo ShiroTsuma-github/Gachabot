@@ -102,6 +102,8 @@ public sealed record BrowserCollectionRules
 
     public string[] PermanentSectionHeadingContains { get; init; } = [];
 
+    public bool TrackAllNonPermanentSections { get; init; }
+
     public required string ItemSelector { get; init; }
 
     public required string ValueAttribute { get; init; }
@@ -125,6 +127,16 @@ public sealed record BrowserCollectionRules
     public string MissingExpiryDisplay { get; init; } = "Unknown";
 
     public string? RewardItemSelector { get; init; }
+
+    public string? SectionExpirySelector { get; init; }
+
+    public string? SectionExpiryValueAttribute { get; init; }
+
+    public bool SectionExpiryUnixTimeMilliseconds { get; init; }
+
+    public string? SectionRewardItemSelector { get; init; }
+
+    public string? SectionRewardCodeSelector { get; init; }
 
     public string CurrentAggregateExternalId { get; init; } = "aggregate:current";
 

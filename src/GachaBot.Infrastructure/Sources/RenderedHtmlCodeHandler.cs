@@ -48,19 +48,27 @@ public sealed class RenderedHtmlCodeHandler(
                 $"Rendered page '{definition.Url}' did not contain ready selector '{rules.ReadySelector}'.");
         }
 
-        var currentSections = FindSections(document, rules, rules.CurrentSectionHeadingContains);
-        var permanentSections = FindSections(document, rules, rules.PermanentSectionHeadingContains);
-        if (currentSections.Count == 0 && permanentSections.Count == 0)
+        var allSections = FindSections(document, rules);
+        var permanentSections = allSections
+            .Where(section => HeadingContainsAll(section.Title, rules.PermanentSectionHeadingContains))
+            .ToArray();
+        var currentSections = rules.TrackAllNonPermanentSections
+            ? allSections
+                .Where(section => !HeadingContainsAll(section.Title, rules.PermanentSectionHeadingContains))
+                .ToArray()
+            : allSections
+                .Where(section => HeadingContainsAll(section.Title, rules.CurrentSectionHeadingContains))
+                .ToArray();
+        if (currentSections.Length == 0 && permanentSections.Length == 0)
         {
             throw new InvalidOperationException(
                 $"Rendered page '{definition.Url}' was ready but contained no matching code section.");
         }
 
         var now = timeProvider.GetUtcNow();
-        var currentRows = currentSections.Count == 0
-            ? permanentSections.SelectMany(section => section.Rows).ToArray()
-            : currentSections.SelectMany(section => section.Rows).ToArray();
-        var currentCandidates = FindCodes(currentRows, rules);
+        var currentCandidates = FindCodes(
+            currentSections.Length == 0 ? permanentSections : currentSections,
+            rules);
         var currentCodes = currentCandidates
             .Where(code => code.ExpiryRecognized &&
                 !code.IsPermanent &&
@@ -90,7 +98,7 @@ public sealed class RenderedHtmlCodeHandler(
             .Select(candidate => candidate.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var permanentCodes = FindCodes(
-                permanentSections.SelectMany(section => section.Rows).ToArray(),
+                rules.TrackAllNonPermanentSections ? allSections : permanentSections,
                 rules)
             .Where(code => code.ExpiryRecognized &&
                 code.IsPermanent &&
@@ -186,8 +194,7 @@ public sealed class RenderedHtmlCodeHandler(
 
     private static List<CodeSection> FindSections(
         IDocument document,
-        BrowserCollectionRules rules,
-        IReadOnlyList<string> targetHeadingContains)
+        BrowserCollectionRules rules)
     {
         var elements = document.All.ToArray();
         var sections = new List<CodeSection>();
@@ -203,14 +210,13 @@ public sealed class RenderedHtmlCodeHandler(
             if (rules.SectionHeadingContains.Any(required =>
                     !headingText.Contains(required, StringComparison.OrdinalIgnoreCase)) ||
                 rules.SectionHeadingExcludes.Any(excluded =>
-                    headingText.Contains(excluded, StringComparison.OrdinalIgnoreCase)) ||
-                targetHeadingContains.Any(required =>
-                    !headingText.Contains(required, StringComparison.OrdinalIgnoreCase)))
+                    headingText.Contains(excluded, StringComparison.OrdinalIgnoreCase)))
             {
                 continue;
             }
 
             var rows = new List<IElement>();
+            var sectionElements = new List<IElement>();
             for (var index = headingIndex + 1; index < elements.Length; index++)
             {
                 var element = elements[index];
@@ -219,6 +225,7 @@ public sealed class RenderedHtmlCodeHandler(
                     break;
                 }
 
+                sectionElements.Add(element);
                 if (element.Matches(rules.RowSelector) && element.QuerySelector(rules.ItemSelector) is not null)
                 {
                     rows.Add(element);
@@ -227,7 +234,7 @@ public sealed class RenderedHtmlCodeHandler(
 
             if (rows.Count > 0)
             {
-                sections.Add(new CodeSection(headingText, rows));
+                sections.Add(new CodeSection(headingText, rows, sectionElements));
             }
         }
 
@@ -235,45 +242,123 @@ public sealed class RenderedHtmlCodeHandler(
     }
 
     private static List<CodeCandidate> FindCodes(
-        IReadOnlyList<IElement> rows,
+        IReadOnlyList<CodeSection> sections,
         BrowserCollectionRules rules)
     {
         var result = new List<CodeCandidate>();
         var indexes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var row in rows)
+        foreach (var section in sections)
         {
-            var item = row.QuerySelector(rules.ItemSelector);
-            var value = SourceParsing.NormalizeWhitespace(
-                item?.GetAttribute(rules.ValueAttribute) ?? string.Empty);
-            if (string.IsNullOrWhiteSpace(value))
+            var sectionExpiry = ParseSectionExpiry(section, rules);
+            var sectionRewards = FindSectionRewards(section, rules);
+            foreach (var row in section.Rows)
+            {
+                var item = row.QuerySelector(rules.ItemSelector);
+                var value = SourceParsing.NormalizeWhitespace(
+                    item?.GetAttribute(rules.ValueAttribute) ?? string.Empty);
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                var expiryText = rules.ExpirySelector is null
+                    ? string.Empty
+                    : SourceParsing.NormalizeWhitespace(row.QuerySelector(rules.ExpirySelector)?.TextContent ?? string.Empty);
+                var expiry = string.IsNullOrWhiteSpace(expiryText) && sectionExpiry is not null
+                    ? sectionExpiry
+                    : ParseExpiry(expiryText, rules);
+                var rewards = rules.RewardItemSelector is null
+                    ? string.Empty
+                    : string.Join(", ", row.QuerySelectorAll(rules.RewardItemSelector)
+                        .Select(element => CleanReward(element.TextContent))
+                        .Where(text => !string.IsNullOrWhiteSpace(text)));
+                if (string.IsNullOrWhiteSpace(rewards))
+                {
+                    sectionRewards.TryGetValue(value, out rewards);
+                }
+
+                var candidate = new CodeCandidate(
+                    value,
+                    expiry.Display,
+                    expiry.ExpiresAtUtc,
+                    rewards ?? string.Empty,
+                    expiry.IsRecognized,
+                    expiry.IsPermanent);
+                if (indexes.TryGetValue(value, out var existingIndex))
+                {
+                    result[existingIndex] = Merge(result[existingIndex], candidate);
+                }
+                else
+                {
+                    indexes.Add(value, result.Count);
+                    result.Add(candidate);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static ParsedExpiry? ParseSectionExpiry(CodeSection section, BrowserCollectionRules rules)
+    {
+        if (string.IsNullOrWhiteSpace(rules.SectionExpirySelector))
+        {
+            return null;
+        }
+
+        var element = section.Elements.FirstOrDefault(candidate =>
+            candidate.Matches(rules.SectionExpirySelector));
+        if (element is null)
+        {
+            return null;
+        }
+
+        var value = string.IsNullOrWhiteSpace(rules.SectionExpiryValueAttribute)
+            ? SourceParsing.NormalizeWhitespace(element.TextContent)
+            : SourceParsing.NormalizeWhitespace(element.GetAttribute(rules.SectionExpiryValueAttribute) ?? string.Empty);
+        if (rules.SectionExpiryUnixTimeMilliseconds &&
+            long.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var unixMilliseconds))
+        {
+            try
+            {
+                var expiresAtUtc = DateTimeOffset.FromUnixTimeMilliseconds(unixMilliseconds);
+                return new ParsedExpiry(DiscordTimestampFormatter.Format(expiresAtUtc), expiresAtUtc, true, false);
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                return null;
+            }
+        }
+
+        return ParseExpiry(value, rules);
+    }
+
+    private static Dictionary<string, string> FindSectionRewards(
+        CodeSection section,
+        BrowserCollectionRules rules)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(rules.SectionRewardItemSelector) ||
+            string.IsNullOrWhiteSpace(rules.SectionRewardCodeSelector))
+        {
+            return result;
+        }
+
+        foreach (var element in section.Elements.Where(candidate =>
+                     candidate.Matches(rules.SectionRewardItemSelector)))
+        {
+            var code = SourceParsing.NormalizeWhitespace(
+                element.QuerySelector(rules.SectionRewardCodeSelector)?.TextContent ?? string.Empty);
+            var text = SourceParsing.NormalizeWhitespace(element.TextContent);
+            if (string.IsNullOrWhiteSpace(code) || !text.StartsWith(code, StringComparison.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            var expiryText = rules.ExpirySelector is null
-                ? string.Empty
-                : SourceParsing.NormalizeWhitespace(row.QuerySelector(rules.ExpirySelector)?.TextContent ?? string.Empty);
-            var expiry = ParseExpiry(expiryText, rules);
-            var rewards = rules.RewardItemSelector is null
-                ? string.Empty
-                : string.Join(", ", row.QuerySelectorAll(rules.RewardItemSelector)
-                    .Select(element => CleanReward(element.TextContent))
-                    .Where(text => !string.IsNullOrWhiteSpace(text)));
-            var candidate = new CodeCandidate(
-                value,
-                expiry.Display,
-                expiry.ExpiresAtUtc,
-                rewards,
-                expiry.IsRecognized,
-                expiry.IsPermanent);
-            if (indexes.TryGetValue(value, out var existingIndex))
+            var rewards = CleanReward(text[code.Length..]);
+            if (!string.IsNullOrWhiteSpace(rewards))
             {
-                result[existingIndex] = Merge(result[existingIndex], candidate);
-            }
-            else
-            {
-                indexes.Add(value, result.Count);
-                result.Add(candidate);
+                result[code] = rewards;
             }
         }
 
@@ -331,11 +416,8 @@ public sealed class RenderedHtmlCodeHandler(
             {
                 var expiresAtUtc = new DateTimeOffset(
                     date.AddDays(1).ToDateTime(TimeOnly.MinValue),
-                    TimeSpan.Zero);
-                var display = string.Create(
-                    CultureInfo.InvariantCulture,
-                    $"{date:dd.MM.yyyy} (<t:{expiresAtUtc.ToUnixTimeSeconds()}:R>)");
-                return new ParsedExpiry(display, expiresAtUtc, true, false);
+                    TimeSpan.Zero).AddTicks(-1);
+                return new ParsedExpiry(DiscordTimestampFormatter.Format(expiresAtUtc), expiresAtUtc, true, false);
             }
         }
 
@@ -354,10 +436,17 @@ public sealed class RenderedHtmlCodeHandler(
         return expiry with { Rewards = rewards };
     }
 
+    private static bool HeadingContainsAll(string heading, string[] requiredValues) =>
+        requiredValues.Length > 0 && requiredValues.All(required =>
+            heading.Contains(required, StringComparison.OrdinalIgnoreCase));
+
     private static string CleanReward(string value) =>
         SourceParsing.NormalizeWhitespace(value).TrimStart('・', '•', '-', ' ');
 
-    private sealed record CodeSection(string Title, IReadOnlyList<IElement> Rows);
+    private sealed record CodeSection(
+        string Title,
+        IReadOnlyList<IElement> Rows,
+        IReadOnlyList<IElement> Elements);
 
     private sealed record CodeCandidate(
         string Value,
