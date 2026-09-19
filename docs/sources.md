@@ -36,6 +36,8 @@ Brak kolejnej strony listy (`404`) oznacza naturalny koniec paginacji i nie ozna
 
 Źródło kodów Wuthering Waves śledzi wszystkie sekcje z kodami poza jawną listą kodów permanentnych, zamiast polegać wyłącznie na aktualnym nagłówku livestreamu. Obsługuje zarówno klasyczne wiersze z nagrodą i datą, jak i dynamiczny układ Game8: kody w tabeli, wspólny timestamp `data-date` oraz listę nagród pod tabelą. Daty wygaśnięcia są publikowane w tym samym pełnym i względnym formacie Discorda co daty eventów.
 
+Daty eventów Wuthering Waves z WuWa Tracker są normalizowane do resetu serwera o 04:00 w skonfigurowanej strefie UTC+8. Godzina osadzona w źródłowym payloadzie nie jest używana jako godzina rozpoczęcia lub zakończenia eventu.
+
 Definicja NTE ignoruje techniczne duplikaty obrazów z `docs.oa.wanmei.net`; artykuł potrafi zawierać obok nich właściwe grafiki z CDN `ntevmg.perfectworld.com`. Lista ignorowanych hostów jest regułą JSON (`IgnoredImageHosts`), a nie warunkiem zaszytym w parserze.
 
 Game8 najpierw potrafi zwrócić HTTP `202` i dopiero po wykonaniu wyzwania JavaScript udostępnia dokument. Handler Playwright nie uznaje początkowego statusu za wynik: czeka na skonfigurowany element DOM, a deklaratywne reguły odczytują kod, nagrody i datę wygaśnięcia z wiersza tabeli. Kody bieżącej wersji i kody permanentne trafiają do osobnych wpisów (`aggregate:current` i `aggregate:permanent`). Sekcja ogólna „All Active” nie zastępuje pustej sekcji bieżącej wersji. Kod po dacie ważności jest zachowywany jako osobny rekord archiwalny z nagrodami. Nierozpoznane daty nie są publikowane. Game8 pozostaje źródłem pomocniczym i ma `ReviewRequired`.

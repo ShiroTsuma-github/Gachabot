@@ -51,7 +51,8 @@
       "Handler": "wuthering-waves-timeline",
       "Url": "https://wuwatracker.com/pl/timeline",
       "Timeline": {
-        "ServerUtcOffsetHours": 8
+        "ServerUtcOffsetHours": 8,
+        "ServerResetHour": 4
       }
     },
     {

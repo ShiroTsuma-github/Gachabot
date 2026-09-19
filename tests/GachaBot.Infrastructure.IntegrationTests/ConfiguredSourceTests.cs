@@ -93,7 +93,7 @@ public sealed class ConfiguredSourceTests
             Trust = SourceTrust.Trusted,
             Handler = WutheringWavesTimelineHandler.HandlerKey,
             Url = new Uri("https://wuwatracker.com/pl/timeline"),
-            Timeline = new TimelineRules { ServerUtcOffsetHours = 8 },
+            Timeline = new TimelineRules { ServerUtcOffsetHours = 8, ServerResetHour = 4 },
         };
 
         var items = await ReadAllAsync(ConfiguredSource(
@@ -103,16 +103,19 @@ public sealed class ConfiguredSourceTests
         Assert.Equal(2, items.Count);
         var banner = Assert.Single(items, item => item.Title == "Denia Banner");
         Assert.Equal(ContentKind.Event, banner.Kind);
-        Assert.Equal(new DateTimeOffset(2026, 8, 20, 2, 0, 0, TimeSpan.Zero), banner.PublishedAtUtc);
-        Assert.Equal(new DateTimeOffset(2026, 9, 10, 1, 59, 59, TimeSpan.Zero), banner.ExpiresAtUtc);
+        Assert.Equal(new DateTimeOffset(2026, 8, 19, 20, 0, 0, TimeSpan.Zero), banner.PublishedAtUtc);
+        Assert.Equal(new DateTimeOffset(2026, 9, 9, 20, 0, 0, TimeSpan.Zero), banner.ExpiresAtUtc);
         Assert.Equal("https://wutheringwaves.kurogames.com/en/main/news/detail/5310", banner.SourceUrl.AbsoluteUri);
         var cover = Assert.Single(banner.Document.Blocks.OfType<ImageBlock>());
         Assert.Equal("https://wuwatracker.com/api/event-cover-images/file/denia.png", cover.Url.AbsoluteUri);
         var schedule = Assert.Single(banner.Document.Blocks.OfType<KeyValueBlock>());
-        Assert.Contains(schedule.Items, item => item.Key == "Start" && item.Value == "<t:1787191200:F> · <t:1787191200:R>");
-        Assert.Contains(schedule.Items, item => item.Key == "End" && item.Value == "<t:1789005599:F> · <t:1789005599:R>");
+        Assert.Contains(schedule.Items, item => item.Key == "Start" && item.Value == "<t:1787169600:F> · <t:1787169600:R>");
+        Assert.Contains(schedule.Items, item => item.Key == "End" && item.Value == "<t:1788984000:F> · <t:1788984000:R>");
         Assert.Contains(banner.Document.Blocks.OfType<LinkBlock>(), block =>
             block.Label == "Schedule: WuWa Tracker");
+        var activity = Assert.Single(items, item => item.Title == "Combat Event");
+        Assert.Equal(new DateTimeOffset(2026, 8, 21, 20, 0, 0, TimeSpan.Zero), activity.PublishedAtUtc);
+        Assert.Equal(new DateTimeOffset(2026, 9, 28, 20, 0, 0, TimeSpan.Zero), activity.ExpiresAtUtc);
     }
 
     [Fact]
@@ -655,6 +658,16 @@ public sealed class ConfiguredSourceTests
                 </tr>
                 <tr>
                   <td>
+                    <input class="a-clipboard__textInput" type="text" value="MULTIREWARD" readonly>
+                    <span class="a-red">Expiry Date: 09/20/2026</span>
+                  </td>
+                  <td>
+                    <div class="align">Annulith x100</div>
+                    <div class="align">Rising Hunter Guide x5</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
                     <input class="a-clipboard__textInput" type="text" value="COMEBACK" readonly>
                     <span class="a-red">Expiry Date: TBD</span>
                   </td>
@@ -711,7 +724,7 @@ public sealed class ConfiguredSourceTests
         var current = Assert.Single(items, item => item.ExternalId == "aggregate:current");
         Assert.Equal("All Active Redeem Codes", current.Title);
         Assert.Equal(
-            ["WITCHHOUSE", "COMEBACK"],
+            ["WITCHHOUSE", "MULTIREWARD", "COMEBACK"],
             current.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
         var currentBlocks = current.Document.Blocks.ToArray();
         var witchHouseIndex = Array.FindIndex(currentBlocks, block =>
@@ -722,6 +735,11 @@ public sealed class ConfiguredSourceTests
             item.Key == "Rewards" && item.Value.Contains("Annulith x100", StringComparison.Ordinal));
         Assert.Contains(witchHouseDetails.Items, item =>
             item.Key == "Expires" && item.Value == "<t:1789948799:F> · <t:1789948799:R>");
+        var multiRewardIndex = Array.FindIndex(currentBlocks, block =>
+            block is CodeBlock code && code.Code == "MULTIREWARD");
+        var multiRewardDetails = Assert.IsType<KeyValueBlock>(currentBlocks[multiRewardIndex + 1]);
+        Assert.Contains(multiRewardDetails.Items, item =>
+            item.Key == "Rewards" && item.Value == $"Annulith x100{Environment.NewLine}Rising Hunter Guide x5");
         var permanent = Assert.Single(items, item => item.ExternalId == "aggregate:permanent");
         Assert.Equal(["NTENENE"], permanent.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
     }
@@ -782,7 +800,8 @@ public sealed class ConfiguredSourceTests
         Assert.Equal(["WUTHERINGGIFT"], permanent.Document.Blocks.OfType<CodeBlock>().Select(block => block.Code));
         var details = permanent.Document.Blocks.OfType<KeyValueBlock>().ToArray();
         Assert.Contains(details, block => block.Items.Any(field =>
-            field.Key == "Rewards" && field.Value.Contains("Shell Credit x15,000", StringComparison.Ordinal)));
+            field.Key == "Rewards" && field.Value ==
+                $"Astrite x50{Environment.NewLine}Premium Resonance Potion x2{Environment.NewLine}Shell Credit x15,000"));
         Assert.Contains(details, block => block.Items.Any(field =>
             field.Key == "Expires" && field.Value == "No expiry announced"));
         Assert.Contains(current.Document.Blocks.OfType<KeyValueBlock>(), block => block.Items.Any(field =>

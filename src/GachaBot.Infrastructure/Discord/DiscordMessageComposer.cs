@@ -282,7 +282,8 @@ public static class DiscordMessageComposer
 
     private static string FormatDetails(KeyValueBlock details) => string.Join(
         Environment.NewLine,
-        details.Items.Select(item => $"**{EscapePlainText(item.Key)}:** {EscapePlainText(item.Value)}"));
+        details.Items.Select(item =>
+            $"**{EscapePlainText(item.Key)}:**{Environment.NewLine}{EscapePlainText(item.Value)}"));
 
     private static string EscapeLabel(string value) => value.Replace("]", "\\]", StringComparison.Ordinal);
 

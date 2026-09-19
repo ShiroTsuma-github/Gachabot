@@ -152,6 +152,8 @@ public sealed record BrowserCollectionRules
 public sealed record TimelineRules
 {
     public double ServerUtcOffsetHours { get; init; } = 8;
+
+    public int? ServerResetHour { get; init; }
 }
 
 public sealed record EventCalendarRules
@@ -264,6 +266,12 @@ public static class SourceDefinitionCatalog
         if (definition.Handler == WutheringWavesTimelineHandler.HandlerKey && definition.Timeline is null)
         {
             throw new InvalidOperationException($"Source '{definition.Key}' requires Timeline rules.");
+        }
+
+        if (definition.Timeline is { ServerResetHour: < 0 or > 23 })
+        {
+            throw new InvalidOperationException(
+                $"Source '{definition.Key}' requires Timeline.ServerResetHour between 0 and 23.");
         }
 
         if (definition.Handler == Game8EventCalendarHandler.HandlerKey && definition.EventCalendar is null)

@@ -167,6 +167,11 @@ public sealed partial class WutheringWavesTimelineHandler(HttpClient httpClient)
             return false;
         }
 
+        if (rules.ServerResetHour is { } resetHour)
+        {
+            localTime = localTime.Date.AddHours(resetHour);
+        }
+
         utc = new DateTimeOffset(localTime, TimeSpan.FromHours(rules.ServerUtcOffsetHours)).ToUniversalTime();
         return true;
     }

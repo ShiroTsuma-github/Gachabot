@@ -269,7 +269,7 @@ public sealed class RenderedHtmlCodeHandler(
                     : ParseExpiry(expiryText, rules);
                 var rewards = rules.RewardItemSelector is null
                     ? string.Empty
-                    : string.Join(", ", row.QuerySelectorAll(rules.RewardItemSelector)
+                    : string.Join(Environment.NewLine, row.QuerySelectorAll(rules.RewardItemSelector)
                         .Select(element => CleanReward(element.TextContent))
                         .Where(text => !string.IsNullOrWhiteSpace(text)));
                 if (string.IsNullOrWhiteSpace(rewards))
@@ -355,7 +355,8 @@ public sealed class RenderedHtmlCodeHandler(
                 continue;
             }
 
-            var rewards = CleanReward(text[code.Length..]);
+            var rewards = CleanReward(text[code.Length..])
+                .Replace(", ", Environment.NewLine, StringComparison.Ordinal);
             if (!string.IsNullOrWhiteSpace(rewards))
             {
                 result[code] = rewards;

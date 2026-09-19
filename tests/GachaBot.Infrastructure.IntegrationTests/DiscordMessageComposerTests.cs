@@ -90,7 +90,7 @@ public sealed class DiscordMessageComposerTests
             new CodeBlock("WELCOMETONTE", 1),
             new KeyValueBlock(
             [
-                new KeyValueItem("Rewards", "Celebration Fireworks Avatar Frame"),
+                new KeyValueItem("Rewards", $"Celebration Fireworks Avatar Frame{Environment.NewLine}Fons x50,000{Environment.NewLine}Colorless Dye x20"),
                 new KeyValueItem("Expires", "08/18/2026"),
             ], 2),
         ]);
@@ -103,10 +103,13 @@ public sealed class DiscordMessageComposerTests
             StringComparison.Ordinal);
         var embed = Assert.Single(Assert.Single(result.Messages).Embeds);
         Assert.Empty(embed.Fields);
-        Assert.Contains("**Rewards:** Celebration Fireworks Avatar Frame", embed.Description, StringComparison.Ordinal);
-        Assert.Contains("**Expires:** 08/18/2026", embed.Description, StringComparison.Ordinal);
         Assert.Contains(
-            $"**Rewards:** Celebration Fireworks Avatar Frame{Environment.NewLine}**Expires:** 08/18/2026",
+            $"**Rewards:**{Environment.NewLine}" +
+            $"Celebration Fireworks Avatar Frame{Environment.NewLine}" +
+            $"Fons x50,000{Environment.NewLine}" +
+            $"Colorless Dye x20{Environment.NewLine}" +
+            $"**Expires:**{Environment.NewLine}" +
+            "08/18/2026",
             embed.Description,
             StringComparison.Ordinal);
     }
@@ -160,7 +163,10 @@ public sealed class DiscordMessageComposerTests
 
         var embed = Assert.Single(Assert.Single(result.Messages).Embeds);
         Assert.Empty(embed.Fields);
-        Assert.Contains("**Expires:** 19.08.2026 (<t:1787184000:R>)", embed.Description, StringComparison.Ordinal);
+        Assert.Contains(
+            $"**Expires:**{Environment.NewLine}19.08.2026 (<t:1787184000:R>)",
+            embed.Description,
+            StringComparison.Ordinal);
     }
 
     [Fact]
